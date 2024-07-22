@@ -49,7 +49,7 @@ Sự kiện khi người dùng nhấn vào một nút inline trong tin nhắn. B
 
 Lệnh khởi tạo bot, gửi thông báo chào mừng và hiển thị các nút lựa chọn (Deploy Project, Help).
 
-#### /clear:
+### /clear:
 
 Lệnh xóa tất cả các tin nhắn trong cuộc trò chuyện. Bot sẽ gửi thông báo và sau đó xóa từng tin nhắn trong cuộc trò chuyện.
 
