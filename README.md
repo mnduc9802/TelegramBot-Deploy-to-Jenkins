@@ -6,7 +6,7 @@ Bot Telegram hoạt động như một công cụ để triển khai (Deploy) d�
 
 ## Logic
 
-### Khởi tạo Bot
+### Khởi tạo Bot:
 
 Bot được khởi tạo với token và bắt đầu nhận các cập nhật từ Telegram.
 
