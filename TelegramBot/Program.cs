@@ -59,109 +59,101 @@ class Program
                 case "/help":
                     await HelpCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
                     break;
+                case "/status":
+                    await StatusCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                    break;
+                case "/projects":
+                    await ProjectsCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                    break;
+                case "/feedback":
+                    await FeedbackCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                    break;
             }
         }
         else if (update.Type == UpdateType.CallbackQuery)
         {
             var callbackQuery = update.CallbackQuery;
             var chatId = callbackQuery.Message.Chat.Id;
+            var callbackData = callbackQuery.Data;
 
-            if (callbackQuery.Data == "deploy")
+            switch (callbackData)
             {
-                var projectButtons = new List<InlineKeyboardButton[]>();
-                for (int i = 0; i < projects.Count; i++)
-                {
-                    projectButtons.Add(new[]
+                case "deploy":
+                    var projectButtons = new List<InlineKeyboardButton[]>();
+                    for (int i = 0; i < projects.Count; i++)
                     {
-                    InlineKeyboardButton.WithCallbackData(projects[i], $"deploy_{i}")
-                });
-                }
-
-                var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
-
-                await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: "Danh sách các dự án hiện tại:",
-                    replyMarkup: projectKeyboard,
-                    cancellationToken: cancellationToken);
-            }
-            else if (callbackQuery.Data.StartsWith("deploy_"))
-            {
-                int projectIndex = int.Parse(callbackQuery.Data.Split('_')[1]);
-                selectedProject = projects[projectIndex];
-
-                var confirmationKeyboard = new InlineKeyboardMarkup(new[]
-                {
-                InlineKeyboardButton.WithCallbackData("Yes", "confirm_yes"),
-                InlineKeyboardButton.WithCallbackData("No", "confirm_no")
-            });
-
-                await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: $"Bạn đã chọn {selectedProject}. Bạn có muốn xác nhận triển khai không?",
-                    replyMarkup: confirmationKeyboard,
-                    cancellationToken: cancellationToken);
-            }
-            else if (callbackQuery.Data == "confirm_yes" && selectedProject != null)
-            {
-                await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: $"Đang triển khai {selectedProject}...",
-                    cancellationToken: cancellationToken);
-
-                bool deployResult = await DeployProject(selectedProject);
-
-                if (deployResult)
-                {
-                    await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: $"Triển khai {selectedProject} thành công!",
-                        cancellationToken: cancellationToken);
-                }
-                else
-                {
-                    await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: $"Triển khai {selectedProject} thất bại.",
-                        cancellationToken: cancellationToken);
-                }
-
-                selectedProject = null;
-            }
-            else if (callbackQuery.Data == "confirm_no")
-            {
-                var startKeyboard = new InlineKeyboardMarkup(new[]
-                {
-                InlineKeyboardButton.WithCallbackData("Start", "restart")
-            });
-
-                await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: "Yêu cầu của bạn đã bị hủy. Nhấn vào nút dưới đây để bắt đầu lại.",
-                    replyMarkup: startKeyboard,
-                    cancellationToken: cancellationToken);
-
-                selectedProject = null;
-            }
-            else if (callbackQuery.Data == "help")
-            {
-                await HelpCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
-            }
-            else if (callbackQuery.Data == "restart")
-            {
-                var startMessage = new Message
-                {
-                    Chat = new Chat
-                    {
-                        Id = chatId
+                        projectButtons.Add(new[]
+                        {
+                        InlineKeyboardButton.WithCallbackData(projects[i], $"deploy_{i}")
+                    });
                     }
-                };
-                await StartCommand.ExecuteAsync(botClient, startMessage, cancellationToken);
+
+                    var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
+
+                    await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "Danh sách các dự án hiện tại:",
+                        replyMarkup: projectKeyboard,
+                        cancellationToken: cancellationToken);
+                    break;
+
+                case "projects":
+                    await ProjectsCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
+                    break;
+
+                case "status":
+                    await StatusCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
+                    break;
+
+                case "help":
+                    await HelpCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
+                    break;
+
+                case string data when data.StartsWith("deploy_"):
+                    int projectIndex = int.Parse(data.Split('_')[1]);
+                    string project = projects[projectIndex];
+
+                    var confirmationKeyboard = new InlineKeyboardMarkup(new[]
+                    {
+                    InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
+                    InlineKeyboardButton.WithCallbackData("No", "confirm_no")
+                });
+
+                    await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
+                        replyMarkup: confirmationKeyboard,
+                        cancellationToken: cancellationToken);
+                    break;
+
+                case string data when data.StartsWith("confirm_yes_"):
+                    int index = int.Parse(data.Split('_')[2]);
+                    string selectedProject = projects[index];
+
+                    await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, selectedProject, cancellationToken);
+                    break;
+
+                case "confirm_no":
+                    await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "Yêu cầu của bạn đã bị hủy.",
+                        replyMarkup: new InlineKeyboardMarkup(new[]
+                        {
+                        InlineKeyboardButton.WithCallbackData("Start Again", "start_again")
+                        }),
+                        cancellationToken: cancellationToken);
+
+                    break;
+
+                case "start_again":
+                    await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
+                    break;
             }
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
         }
     }
+
 
 
     static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -178,7 +170,7 @@ class Program
 
     static async Task<bool> DeployProject(string project)
     {
-        await Task.Delay(5000);
+        await Task.Delay(5000); // Simulate deployment
         return true;
     }
 }

@@ -2,15 +2,19 @@
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 public class HelpCommand
 {
     public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
     {
         var helpText = "Các lệnh có sẵn:\n" +
-                        "/start - Bắt đầu chương trình\n" +
-                        "/clear - Xóa toàn bộ tin nhắn\n" +
-                        "/help - Hiển thị danh sách các lệnh";
+                       "/start - Khởi tạo bot\n" +
+                       "/clear - Xóa tất cả tin nhắn\n" +
+                       "/help - Hiển thị danh sách lệnh\n" +
+                       "/status - Xem trạng thái hiện tại\n" +
+                       "/projects - Xem danh sách các dự án\n" +
+                       "/feedback - Gửi phản hồi";
 
         await botClient.SendTextMessageAsync(
             chatId: message.Chat.Id,
