@@ -1,66 +1,81 @@
-# TelegramBot
+# Telegram Bot
 
 ## Concept
 
-Bot Telegram hoạt động như một công cụ để triển khai (Deploy) dự án với các chức năng chính như: Khởi tạo, Xóa tin nhắn, Hiển thị danh sách các lệnh, cung cấp tùy chọn để triển khai các dự á. Bot có thể nhận lệnh từ người dùng và phản hồi với thông tin phù hợp hoặc thực hiện các hành động cụ thể.
+Bot Telegram này cung cấp các chức năng quản lý dự án, triển khai dự án, theo dõi trạng thái và phản hồi. Nó giúp người dùng tương tác với bot để thực hiện các thao tác liên quan đến dự án một cách thuận tiện và dễ dàng.
 
 ## Logic
 
-### Khởi tạo Bot:
+Bot được thiết kế để xử lý các lệnh và phản hồi từ người dùng thông qua các tin nhắn văn bản và các nút inline. Bot theo dõi trạng thái phản hồi của người dùng và cập nhật thông tin tương ứng.
 
-Bot được khởi tạo với token và bắt đầu nhận các cập nhật từ Telegram.
+### Các Thành Phần Chính
 
-### Xử lý Cập nhật (Updates):
-
-Khi nhận một tin nhắn hoặc callback query, bot kiểm tra loại cập nhật và dữ liệu liên quan.
-Dựa vào loại cập nhật, bot thực hiện các hành động tương ứng (như xử lý tin nhắn hoặc callback query).
-
-### Xử lý Lệnh:
-
-Bot xử lý các lệnh /start, /clear, /help và callback queries để thực hiện các hành động cụ thể như hiển thị thông tin, xóa tin nhắn, hoặc xử lý yêu cầu triển khai dự án.
-
-### Cập nhật Giao diện Người Dùng:
-
-Bot gửi các tin nhắn và bàn phím inline (inline keyboards) để tương tác với người dùng, cung cấp lựa chọn và yêu cầu xác nhận.
+1. **Commands**: Xử lý các lệnh từ người dùng.
+2. **Callback Queries**: Xử lý các phản hồi từ các nút inline.
+3. **Feedback State**: Theo dõi trạng thái phản hồi của người dùng để xử lý phản hồi một cách chính xác.
+4. **Deployment Simulation**: Giả lập quá trình triển khai dự án và thông báo kết quả cho người dùng.
 
 ## Trigger
 
-### Tin nhắn đến:
-
-Khi bot nhận được tin nhắn từ người dùng, bot sẽ kiểm tra nội dung tin nhắn để xác định lệnh cần thực hiện (/start, /clear, /help).
-
-### Callback Query:
-
-Khi người dùng nhấn vào một nút inline, bot nhận được callback query và xử lý dữ liệu callback để thực hiện hành động cụ thể (như hiển thị danh sách dự án hoặc xác nhận triển khai).
+1. **Tin nhắn văn bản từ người dùng**: Khi người dùng gửi tin nhắn với các lệnh như `/start`, `/projects`, `/deploy`, `/status`, `/help`, hoặc `/feedback`.
+2. **Callback query từ các nút inline**: Khi người dùng nhấn các nút inline như "Projects", "Deploy Project", "Status", "Help", hoặc các nút xác nhận triển khai.
 
 ## Event
 
-### Update Type.Message:
-
-Sự kiện khi bot nhận được một tin nhắn mới từ người dùng. Bot sẽ kiểm tra nội dung của tin nhắn để xác định lệnh và thực hiện hành động tương ứng.
-
-### Update Type.CallbackQuery:
-
-Sự kiện khi người dùng nhấn vào một nút inline trong tin nhắn. Bot sẽ xử lý dữ liệu callback để thực hiện các hành động như hiển thị danh sách dự án hoặc yêu cầu xác nhận.
+1. **Lệnh `/start`**: Kích hoạt khi người dùng gửi lệnh `/start`.
+2. **Lệnh `/projects`**: Kích hoạt khi người dùng gửi lệnh `/projects`.
+3. **Lệnh `/deploy`**: Kích hoạt khi người dùng gửi lệnh `/deploy`.
+4. **Lệnh `/status`**: Kích hoạt khi người dùng gửi lệnh `/status`.
+5. **Lệnh `/help`**: Kích hoạt khi người dùng gửi lệnh `/help`.
+6. **Lệnh `/feedback`**: Kích hoạt khi người dùng gửi lệnh `/feedback`.
+7. **Callback query "Projects"**: Kích hoạt khi người dùng nhấn nút "Projects".
+8. **Callback query "Deploy Project"**: Kích hoạt khi người dùng nhấn nút "Deploy Project".
+9. **Callback query "Status"**: Kích hoạt khi người dùng nhấn nút "Status".
+10. **Callback query "Help"**: Kích hoạt khi người dùng nhấn nút "Help".
+11. **Callback query xác nhận triển khai**: Kích hoạt khi người dùng nhấn nút "Yes" hoặc "No" trong quá trình xác nhận triển khai.
 
 ## Command
 
-### /start:
+### StartCommand
+- **Mô tả**: Gửi tin nhắn chào mừng và các tùy chọn lệnh.
+- **Lệnh**: `/start`
+- **Hành động**: Gửi tin nhắn với các nút "Projects", "Deploy Project", "Status", "Help".
 
-Lệnh khởi tạo bot, gửi thông báo chào mừng và hiển thị các nút lựa chọn (Deploy Project, Help).
+### ProjectsCommand
+- **Mô tả**: Hiển thị danh sách các dự án.
+- **Lệnh**: `/projects`
+- **Hành động**: Gửi tin nhắn với danh sách các dự án hiện tại.
 
-### /clear:
+### DeployCommand
+- **Mô tả**: Triển khai một dự án được chọn.
+- **Lệnh**: N/A (kích hoạt từ callback query)
+- **Hành động**: Gửi tin nhắn xác nhận và thực hiện triển khai dự án.
 
-Lệnh xóa tất cả các tin nhắn trong cuộc trò chuyện. Bot sẽ gửi thông báo và sau đó xóa từng tin nhắn trong cuộc trò chuyện.
+### StatusCommand
+- **Mô tả**: Hiển thị trạng thái của bot và thông báo nếu mất kết nối mạng.
+- **Lệnh**: `/status`
+- **Hành động**: Gửi tin nhắn trạng thái bot và kiểm tra kết nối mạng.
 
-### /help:
+### HelpCommand
+- **Mô tả**: Hiển thị hướng dẫn sử dụng các lệnh của bot.
+- **Lệnh**: `/help`
+- **Hành động**: Gửi tin nhắn hướng dẫn.
 
-Lệnh hiển thị danh sách các lệnh có sẵn trong bot, cung cấp thông tin về cách sử dụng bot.
+### FeedbackCommand
+- **Mô tả**: Yêu cầu và xử lý phản hồi từ người dùng.
+- **Lệnh**: `/feedback`
+- **Hành động**: Gửi tin nhắn yêu cầu phản hồi và xử lý phản hồi từ người dùng.
 
-### Deploy Project:
+---
 
-Khi người dùng chọn tùy chọn triển khai dự án từ nút inline, bot sẽ hiển thị danh sách các dự án và yêu cầu người dùng xác nhận triển khai.
+## Cách Chạy Bot
 
-### Confirmation (Yes/No):
+1. Cài đặt .NET 8.
+2. Sao chép mã nguồn của bot.
+3. Thêm token của bot vào mã nguồn.
+4. Chạy chương trình bằng lệnh `dotnet run`.
+5. Sử dụng các lệnh như `/start`, `/projects`, `/deploy`, `/status`, `/help`, hoặc `/feedback` để tương tác với bot.
 
-Khi người dùng xác nhận triển khai dự án, bot thực hiện hành động triển khai và thông báo kết quả. Nếu người dùng hủy, bot cung cấp tùy chọn để bắt đầu lại.
+---
+
+**Lưu ý**: Đảm bảo bot của bạn đã được bật và có quyền truy cập Internet để nhận và gửi tin nhắn.
