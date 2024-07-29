@@ -13,7 +13,7 @@ class Program
 {
     static ITelegramBotClient botClient;
     static List<string> projects = new List<string> { "Project A", "Project B", "Project C" };
-    static string selectedProject = null;
+    static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
 
     static async Task Main()
     {
@@ -48,26 +48,35 @@ class Program
             var chatId = update.Message.Chat.Id;
             var text = update.Message.Text;
 
-            switch (text)
+            if (feedbackState.ContainsKey(chatId) && feedbackState[chatId])
             {
-                case "/start":
-                    await StartCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                    break;
-                case "/clear":
-                    await ClearCommand.ExecuteAsync(botClient, chatId, cancellationToken);
-                    break;
-                case "/help":
-                    await HelpCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                    break;
-                case "/status":
-                    await StatusCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                    break;
-                case "/projects":
-                    await ProjectsCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                    break;
-                case "/feedback":
-                    await FeedbackCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                    break;
+                feedbackState[chatId] = false;
+                await FeedbackCommand.HandleFeedbackResponseAsync(botClient, update.Message, cancellationToken);
+            }
+            else
+            {
+                switch (text)
+                {
+                    case "/start":
+                        await StartCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                        break;
+                    case "/clear":
+                        await ClearCommand.ExecuteAsync(botClient, chatId, cancellationToken);
+                        break;
+                    case "/help":
+                        await HelpCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                        break;
+                    case "/status":
+                        await StatusCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                        break;
+                    case "/projects":
+                        await ProjectsCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                        break;
+                    case "/feedback":
+                        feedbackState[chatId] = true;
+                        await FeedbackCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
+                        break;
+                }
             }
         }
         else if (update.Type == UpdateType.CallbackQuery)
@@ -84,8 +93,8 @@ class Program
                     {
                         projectButtons.Add(new[]
                         {
-                        InlineKeyboardButton.WithCallbackData(projects[i], $"deploy_{i}")
-                    });
+                            InlineKeyboardButton.WithCallbackData(projects[i], $"deploy_{i}")
+                        });
                     }
 
                     var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
@@ -115,9 +124,9 @@ class Program
 
                     var confirmationKeyboard = new InlineKeyboardMarkup(new[]
                     {
-                    InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
-                    InlineKeyboardButton.WithCallbackData("No", "confirm_no")
-                });
+                        InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
+                        InlineKeyboardButton.WithCallbackData("No", "confirm_no")
+                    });
 
                     await botClient.SendTextMessageAsync(
                         chatId: chatId,
@@ -139,10 +148,9 @@ class Program
                         text: "Yêu cầu của bạn đã bị hủy.",
                         replyMarkup: new InlineKeyboardMarkup(new[]
                         {
-                        InlineKeyboardButton.WithCallbackData("Start Again", "start_again")
+                            InlineKeyboardButton.WithCallbackData("Bắt đầu lại", "start_again")
                         }),
                         cancellationToken: cancellationToken);
-
                     break;
 
                 case "start_again":
@@ -154,8 +162,6 @@ class Program
         }
     }
 
-
-
     static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         var errorMessage = exception switch
@@ -166,11 +172,5 @@ class Program
 
         Console.WriteLine(errorMessage);
         return Task.CompletedTask;
-    }
-
-    static async Task<bool> DeployProject(string project)
-    {
-        await Task.Delay(5000); // Simulate deployment
-        return true;
     }
 }

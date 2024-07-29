@@ -14,4 +14,12 @@ public class FeedbackCommand
             text: feedbackText,
             cancellationToken: cancellationToken);
     }
+    public static async Task HandleFeedbackResponseAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
+    {
+        await botClient.SendTextMessageAsync(
+            chatId: message.Chat.Id,
+            text: "Cảm ơn bạn đã phản hồi dịch vụ của chúng tôi.",
+            cancellationToken: cancellationToken
+        );
+    }
 }

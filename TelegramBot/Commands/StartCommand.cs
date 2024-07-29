@@ -12,7 +12,7 @@ public class StartCommand
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("Projects", "projects"),
+                InlineKeyboardButton.WithCallbackData("List All Projects", "projects"),
                 InlineKeyboardButton.WithCallbackData("Deploy Project", "deploy")
             },
 

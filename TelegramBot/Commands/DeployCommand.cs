@@ -36,7 +36,7 @@ public class DeployCommand
         {
             // Giả lập triển khai dự án
             await Task.Delay(5000); // Thay thế bằng logic triển khai thực tế
-            return true; // Hoặc false nếu thất bại
+            return true;
         }
         catch (Exception ex)
         {
