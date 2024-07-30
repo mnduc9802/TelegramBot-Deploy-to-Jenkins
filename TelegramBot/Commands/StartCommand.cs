@@ -4,12 +4,14 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-public class StartCommand
+namespace TelegramBot.Commands
 {
-    public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
+    public class StartCommand
     {
-        var keyboard = new InlineKeyboardMarkup(new[]
+        public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
             new[]
             {
                 InlineKeyboardButton.WithCallbackData("List All Projects", "projects"),
@@ -23,10 +25,11 @@ public class StartCommand
             }
         });
 
-        await botClient.SendTextMessageAsync(
-            chatId: message.Chat.Id,
-            text: "Chào mừng! Vui lòng chọn một trong các lệnh sau:",
-            replyMarkup: keyboard,
-            cancellationToken: cancellationToken);
+            await botClient.SendTextMessageAsync(
+                chatId: message.Chat.Id,
+                text: "Chào mừng! Vui lòng chọn một trong các lệnh sau:",
+                replyMarkup: keyboard,
+                cancellationToken: cancellationToken);
+        }
     }
 }

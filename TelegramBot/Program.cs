@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Telegram.Bot;
-using Telegram.Bot.Exceptions;
+﻿using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using Telegram.Bot.Types;
+using Telegram.Bot;
+using TelegramBot.Commands;
 
 class Program
 {
@@ -17,10 +14,13 @@ class Program
 
     static async Task Main()
     {
-        botClient = new TelegramBotClient("YOUR_TOKEN");
+        botClient = new TelegramBotClient("7463243734:AAEXs6bid2YewLvCx6iMxzEqRgW2UweCZX4");
 
         var me = await botClient.GetMeAsync();
         Console.WriteLine($"Hello, World! I am user {me.Id} and my name is {me.FirstName}.");
+
+        // Thiết lập các lệnh cho bot
+        await SetBotCommandsAsync(botClient);
 
         var cancellationTokenSource = new CancellationTokenSource();
         var receiverOptions = new ReceiverOptions
@@ -39,6 +39,21 @@ class Program
         Console.ReadKey();
 
         cancellationTokenSource.Cancel();
+    }
+
+    static async Task SetBotCommandsAsync(ITelegramBotClient botClient)
+    {
+        var commands = new[]
+        {
+            new BotCommand { Command = "start", Description = "Bắt đầu sử dụng bot" },
+            new BotCommand { Command = "clear", Description = "Xóa tất cả tin nhắn" },
+            new BotCommand { Command = "help", Description = "Hiển thị trợ giúp" },
+            new BotCommand { Command = "status", Description = "Hiển thị trạng thái" },
+            new BotCommand { Command = "projects", Description = "Danh sách các dự án" },
+            new BotCommand { Command = "feedback", Description = "Gửi phản hồi" }
+        };
+
+        await botClient.SetMyCommandsAsync(commands);
     }
 
     static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -128,8 +143,9 @@ class Program
                         InlineKeyboardButton.WithCallbackData("No", "confirm_no")
                     });
 
-                    await botClient.SendTextMessageAsync(
+                    await botClient.EditMessageTextAsync(
                         chatId: chatId,
+                        messageId: callbackQuery.Message.MessageId,
                         text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
                         replyMarkup: confirmationKeyboard,
                         cancellationToken: cancellationToken);
@@ -139,6 +155,13 @@ class Program
                     int index = int.Parse(data.Split('_')[2]);
                     string selectedProject = projects[index];
 
+                    // Xóa tin nhắn chứa các nút Inline trước khi thực hiện triển khai
+                    await botClient.DeleteMessageAsync(
+                        chatId: chatId,
+                        messageId: callbackQuery.Message.MessageId,
+                        cancellationToken: cancellationToken);
+
+                    // Sau khi xóa tin nhắn, thực hiện triển khai
                     await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, selectedProject, cancellationToken);
                     break;
 
@@ -151,10 +174,20 @@ class Program
                             InlineKeyboardButton.WithCallbackData("Bắt đầu lại", "start_again")
                         }),
                         cancellationToken: cancellationToken);
+
+                    await botClient.DeleteMessageAsync(
+                        chatId: chatId,
+                        messageId: callbackQuery.Message.MessageId,
+                        cancellationToken: cancellationToken);
                     break;
 
                 case "start_again":
                     await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
+
+                    await botClient.DeleteMessageAsync(
+                        chatId: chatId,
+                        messageId: callbackQuery.Message.MessageId,
+                        cancellationToken: cancellationToken);
                     break;
             }
 
