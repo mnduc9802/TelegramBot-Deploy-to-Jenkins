@@ -111,41 +111,56 @@ namespace TelegramBot
 
                 if (callbackData.StartsWith("deploy_"))
                 {
-                    if (!int.TryParse(callbackData.Split('_')[1], out int projectIndex))
+                    var projectPath = callbackData.Substring(7); // Lấy phần còn lại sau "deploy_"
+
+                    // Kiểm tra xem projectPath có chứa "/" không để xác định đây là dự án trong thư mục
+                    if (projectPath.Contains("/"))
                     {
-                        Console.WriteLine($"Invalid data received: {callbackData}"); // Log lỗi
-                        await botClient.SendTextMessageAsync(
-                            chatId: chatId,
-                            text: "Dữ liệu không hợp lệ. Vui lòng thử lại.",
-                            cancellationToken: cancellationToken);
-                        return;
+                        // Xử lý cho dự án trong thư mục
+                        var folderPath = projectPath.Split('/')[0];
+                        var jobName = projectPath.Split('/')[1];
+                        await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, projectPath, cancellationToken);
                     }
-
-                    var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
-                    if (projectIndex < 0 || projectIndex >= projects.Count)
+                    else
                     {
-                        Console.WriteLine($"Invalid project index: {projectIndex}"); // Log lỗi
-                        await botClient.SendTextMessageAsync(
-                            chatId: chatId,
-                            text: "Dự án không hợp lệ. Vui lòng thử lại.",
+                        // Xử lý cho dự án đơn lẻ (giữ nguyên logic cũ)
+                        if (!int.TryParse(projectPath, out int projectIndex))
+                        {
+                            Console.WriteLine($"Invalid data received: {callbackData}");
+                            await botClient.SendTextMessageAsync(
+                                chatId: callbackQuery.Message.Chat.Id,
+                                text: "Dữ liệu không hợp lệ. Vui lòng thử lại.",
+                                cancellationToken: cancellationToken);
+                            return;
+                        }
+
+                        var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
+                        if (projectIndex < 0 || projectIndex >= projects.Count)
+                        {
+                            Console.WriteLine($"Invalid project index: {projectIndex}");
+                            await botClient.SendTextMessageAsync(
+                                chatId: callbackQuery.Message.Chat.Id,
+                                text: "Dự án không hợp lệ. Vui lòng thử lại.",
+                                cancellationToken: cancellationToken);
+                            return;
+                        }
+
+                        string project = projects[projectIndex];
+
+                        // Tiếp tục với logic xác nhận triển khai
+                        var confirmationKeyboard = new InlineKeyboardMarkup(new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectPath}"),
+                            InlineKeyboardButton.WithCallbackData("No", "confirm_no")
+                        });
+
+                        await botClient.EditMessageTextAsync(
+                            chatId: callbackQuery.Message.Chat.Id,
+                            messageId: callbackQuery.Message.MessageId,
+                            text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
+                            replyMarkup: confirmationKeyboard,
                             cancellationToken: cancellationToken);
-                        return;
                     }
-
-                    string project = projects[projectIndex];
-
-                    var confirmationKeyboard = new InlineKeyboardMarkup(new[]
-                    {
-                InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
-                InlineKeyboardButton.WithCallbackData("No", "confirm_no")
-            });
-
-                    await botClient.EditMessageTextAsync(
-                        chatId: chatId,
-                        messageId: callbackQuery.Message.MessageId,
-                        text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
-                        replyMarkup: confirmationKeyboard,
-                        cancellationToken: cancellationToken);
                 }
                 else if (callbackData.StartsWith("confirm_yes_"))
                 {

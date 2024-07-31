@@ -40,8 +40,8 @@ namespace TelegramBot.Commands
                 // Nếu có nhiều job, hiển thị danh sách để người dùng chọn
                 var jobButtons = jobs.Select(job => new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(job, $"deploy_{projectPath}/{job}")
-                }).ToList();
+            InlineKeyboardButton.WithCallbackData(job, $"deploy_{projectPath}/{job}")
+        }).ToList();
 
                 var jobKeyboard = new InlineKeyboardMarkup(jobButtons);
 
@@ -85,7 +85,39 @@ namespace TelegramBot.Commands
                     var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
                     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
-                    var response = await client.PostAsync($"/job/{projectPath}/build", null);
+                    // Lấy crumb
+                    var crumbResponse = await client.GetAsync("/crumbIssuer/api/json");
+                    if (!crumbResponse.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"Failed to get crumb. Status code: {crumbResponse.StatusCode}");
+                        return false;
+                    }
+
+                    var crumbJson = JObject.Parse(await crumbResponse.Content.ReadAsStringAsync());
+                    var crumb = crumbJson["crumb"].ToString();
+                    var crumbRequestField = crumbJson["crumbRequestField"].ToString();
+
+                    // Thêm crumb vào header
+                    client.DefaultRequestHeaders.Add(crumbRequestField, crumb);
+
+                    // Xây dựng URL cho job
+                    var jobPath = projectPath.Replace("/", "/job/");
+                    var url = $"/job/{jobPath}/build";
+                    Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
+
+                    // Gửi yêu cầu triển khai
+                    var response = await client.PostAsync(url, null);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"Deployment failed. Status code: {response.StatusCode}");
+                        Console.WriteLine($"Response content: {await response.Content.ReadAsStringAsync()}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Deployment request sent successfully.");
+                    }
+
                     return response.IsSuccessStatusCode;
                 }
             }
