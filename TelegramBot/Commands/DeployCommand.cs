@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -24,11 +26,12 @@ namespace TelegramBot.Commands
                 text: $"Đang chuẩn bị triển khai {projectPath}...",
                 cancellationToken: cancellationToken);
 
+            // Kiểm tra xem projectPath có phải là folder không
             var jobs = await GetJobsInFolderAsync(projectPath);
 
             if (jobs.Count == 0)
             {
-                // Nếu không có job nào, có thể đây là một job cụ thể
+                // Nếu không có job nào, thực hiện triển khai dự án
                 bool deployResult = await DeployProjectAsync(projectPath);
                 await SendDeployResultAsync(botClient, message.Chat.Id, projectPath, deployResult, cancellationToken);
             }

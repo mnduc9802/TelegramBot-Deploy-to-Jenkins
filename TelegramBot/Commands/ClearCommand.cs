@@ -28,6 +28,44 @@ namespace TelegramBot.Commands
                 cancellationToken: cancellationToken);
         }
 
+        public static async Task HandleClearCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var chatId = callbackQuery.Message.Chat.Id;
+            var callbackData = callbackQuery.Data;
+
+            if (callbackData == "clear_yes")
+            {
+                // Xóa tất cả tin nhắn khi người dùng chọn "Có"
+                await ExecuteAsync(botClient, chatId, cancellationToken);
+            }
+            else if (callbackData == "clear_no")
+            {
+                // Xóa tin nhắn chứa inline keyboard ngay lập tức
+                await botClient.DeleteMessageAsync(
+                    chatId: chatId,
+                    messageId: callbackQuery.Message.MessageId,
+                    cancellationToken: cancellationToken);
+
+                // Gửi tin nhắn thông báo hủy lệnh
+                var cancellationMessage = await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "Yêu cầu của bạn đã bị hủy.",
+                    cancellationToken: cancellationToken);
+
+                // Đợi 5 giây trước khi xóa tin nhắn thông báo hủy lệnh
+                await Task.Delay(5000, cancellationToken);
+
+                // Xóa tin nhắn thông báo hủy lệnh
+                await botClient.DeleteMessageAsync(
+                    chatId: chatId,
+                    messageId: cancellationMessage.MessageId,
+                    cancellationToken: cancellationToken);
+            }
+
+            // Trả lời callback query để Telegram biết rằng bạn đã xử lý nó
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
+        }
+
         public static async Task ExecuteAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
             try
