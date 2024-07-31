@@ -10,25 +10,9 @@ namespace TelegramBot.Commands
     {
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
-            var keyboard = new InlineKeyboardMarkup(new[]
-            {
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData("List All Projects", "projects"),
-                InlineKeyboardButton.WithCallbackData("Deploy Project", "deploy")
-            },
-
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData("Status", "status"),
-                InlineKeyboardButton.WithCallbackData("Help", "help")
-            }
-        });
-
             await botClient.SendTextMessageAsync(
                 chatId: message.Chat.Id,
-                text: "Chào mừng! Vui lòng chọn một trong các lệnh sau:",
-                replyMarkup: keyboard,
+                text: "Chào mừng! Vui lòng bấm vào Menu để thực hiện các yêu cầu.\n - Telegram Bot by mnduc9802",
                 cancellationToken: cancellationToken);
         }
     }

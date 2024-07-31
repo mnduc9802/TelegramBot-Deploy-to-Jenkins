@@ -4,11 +4,30 @@ using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot.Commands
 {
     public class ClearCommand
     {
+        public static async Task RequestConfirmationAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        {
+            var inlineKeyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Có", "clear_yes"),
+                    InlineKeyboardButton.WithCallbackData("Không", "clear_no")
+                }
+            });
+
+            await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: "Bạn có chắc chắn muốn xóa tất cả tin nhắn không?",
+                replyMarkup: inlineKeyboard,
+                cancellationToken: cancellationToken);
+        }
+
         public static async Task ExecuteAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
             try
