@@ -5,13 +5,15 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Commands;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TelegramBot
 {
     public class Program
     {
         public static ITelegramBotClient botClient;
-        public static List<string> projects = new List<string> { "Project A", "Project B", "Project C" };
         public static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
 
         public static async Task Main()
@@ -79,7 +81,10 @@ namespace TelegramBot
                             await StartCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
                             break;
                         case "/deploy":
+                            // Gọi danh sách dự án từ Jenkins
+                            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
                             var projectButtons = new List<InlineKeyboardButton[]>();
+
                             for (int i = 0; i < projects.Count; i++)
                             {
                                 projectButtons.Add(new[]
@@ -131,6 +136,7 @@ namespace TelegramBot
                         break;
                     case string data when data.StartsWith("deploy_"):
                         int projectIndex = int.Parse(data.Split('_')[1]);
+                        var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
                         string project = projects[projectIndex];
 
                         var confirmationKeyboard = new InlineKeyboardMarkup(new[]
@@ -149,7 +155,8 @@ namespace TelegramBot
 
                     case string data when data.StartsWith("confirm_yes_"):
                         int index = int.Parse(data.Split('_')[2]);
-                        string selectedProject = projects[index];
+                        var selectedProjects = await ProjectsCommand.GetJenkinsProjectsAsync();
+                        string selectedProject = selectedProjects[index];
 
                         // Xóa tin nhắn chứa các nút Inline trước khi thực hiện triển khai
                         await botClient.DeleteMessageAsync(
@@ -189,6 +196,18 @@ namespace TelegramBot
 
                 await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
             }
+        }
+
+        private static async Task HandleDeployConfirmation(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var projectPath = callbackQuery.Data.Split('_')[2];
+
+            await botClient.DeleteMessageAsync(
+                chatId: callbackQuery.Message.Chat.Id,
+                messageId: callbackQuery.Message.MessageId,
+                cancellationToken: cancellationToken);
+
+            await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, projectPath, cancellationToken);
         }
 
         public static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
