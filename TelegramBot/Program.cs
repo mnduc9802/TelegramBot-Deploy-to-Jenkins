@@ -19,225 +19,160 @@ namespace TelegramBot
         public static async Task Main()
         {
             botClient = new TelegramBotClient("7463243734:AAEXs6bid2YewLvCx6iMxzEqRgW2UweCZX4");
-
-            var me = await botClient.GetMeAsync();
-            Console.WriteLine($"Hello, World! I am user {me.Id} and my name is {me.FirstName}.");
-
-            // Thiết lập các lệnh cho bot
             await MenuCommand.SetBotCommandsAsync(botClient);
 
-            var cancellationTokenSource = new CancellationTokenSource();
-            var receiverOptions = new ReceiverOptions
-            {
-                AllowedUpdates = Array.Empty<UpdateType>()
-            };
+            var receiverOptions = new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() };
+            botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions);
 
-            botClient.StartReceiving(
-                updateHandler: HandleUpdateAsync,
-                pollingErrorHandler: HandlePollingErrorAsync,
-                receiverOptions: receiverOptions,
-                cancellationToken: cancellationTokenSource.Token
-            );
-
-            Console.WriteLine("Press any key to exit");
+            Console.WriteLine("==========================================");
+            Console.WriteLine("    TELEGRAM DEPLOY BOT by mnduc9802   ");
+            Console.WriteLine("Bot started. Press any key to exit.");
+            Console.WriteLine("==========================================");
             Console.ReadKey();
-
-            cancellationTokenSource.Cancel();
         }
 
-        public static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+        private static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
             if (update.Type == UpdateType.Message && update.Message?.Text != null)
             {
-                var chatId = update.Message.Chat.Id;
-                var text = update.Message.Text;
-
-                if (feedbackState.ContainsKey(chatId) && feedbackState[chatId])
-                {
-                    feedbackState[chatId] = false;
-                    await FeedbackCommand.HandleFeedbackResponseAsync(botClient, update.Message, cancellationToken);
-                }
-                else
-                {
-                    switch (text)
-                    {
-                        case "/start":
-                            await StartCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                            break;
-                        case "/deploy":
-                            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
-                            var projectButtons = new List<InlineKeyboardButton[]>();
-
-                            for (int i = 0; i < projects.Count; i++)
-                            {
-                                projectButtons.Add(new[]
-                                {
-                            InlineKeyboardButton.WithCallbackData(projects[i], $"deploy_{i}")
-                        });
-                            }
-
-                            var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
-
-                            await botClient.SendTextMessageAsync(
-                                chatId: chatId,
-                                text: "Danh sách các dự án hiện tại:",
-                                replyMarkup: projectKeyboard,
-                                cancellationToken: cancellationToken);
-                            break;
-                        case "/clear":
-                            await ClearCommand.RequestConfirmationAsync(botClient, chatId, cancellationToken);
-                            break;
-                        case "/help":
-                            await HelpCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                            break;
-                        case "/status":
-                            await StatusCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                            break;
-                        case "/projects":
-                            await ProjectsCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                            break;
-                        case "/feedback":
-                            feedbackState[chatId] = true;
-                            await FeedbackCommand.ExecuteAsync(botClient, update.Message, cancellationToken);
-                            break;
-                    }
-                }
+                await HandleMessageAsync(update.Message, cancellationToken);
             }
             else if (update.Type == UpdateType.CallbackQuery)
             {
-                var callbackQuery = update.CallbackQuery;
-                var chatId = callbackQuery.Message.Chat.Id;
-                var callbackData = callbackQuery.Data;
-
-                if (callbackData.StartsWith("deploy_"))
-                {
-                    var projectPath = callbackData.Substring(7); // Lấy phần còn lại sau "deploy_"
-
-                    // Kiểm tra xem projectPath có chứa "/" không để xác định đây là dự án trong thư mục
-                    if (projectPath.Contains("/"))
-                    {
-                        // Xử lý cho dự án trong thư mục
-                        var folderPath = projectPath.Split('/')[0];
-                        var jobName = projectPath.Split('/')[1];
-                        await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, projectPath, cancellationToken);
-                    }
-                    else
-                    {
-                        // Xử lý cho dự án đơn lẻ (giữ nguyên logic cũ)
-                        if (!int.TryParse(projectPath, out int projectIndex))
-                        {
-                            Console.WriteLine($"Invalid data received: {callbackData}");
-                            await botClient.SendTextMessageAsync(
-                                chatId: callbackQuery.Message.Chat.Id,
-                                text: "Dữ liệu không hợp lệ. Vui lòng thử lại.",
-                                cancellationToken: cancellationToken);
-                            return;
-                        }
-
-                        var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
-                        if (projectIndex < 0 || projectIndex >= projects.Count)
-                        {
-                            Console.WriteLine($"Invalid project index: {projectIndex}");
-                            await botClient.SendTextMessageAsync(
-                                chatId: callbackQuery.Message.Chat.Id,
-                                text: "Dự án không hợp lệ. Vui lòng thử lại.",
-                                cancellationToken: cancellationToken);
-                            return;
-                        }
-
-                        string project = projects[projectIndex];
-
-                        // Tiếp tục với logic xác nhận triển khai
-                        var confirmationKeyboard = new InlineKeyboardMarkup(new[]
-                        {
-                            InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectPath}"),
-                            InlineKeyboardButton.WithCallbackData("No", "confirm_no")
-                        });
-
-                        await botClient.EditMessageTextAsync(
-                            chatId: callbackQuery.Message.Chat.Id,
-                            messageId: callbackQuery.Message.MessageId,
-                            text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
-                            replyMarkup: confirmationKeyboard,
-                            cancellationToken: cancellationToken);
-                    }
-                }
-                else if (callbackData.StartsWith("confirm_yes_"))
-                {
-                    if (!int.TryParse(callbackData.Split('_')[2], out int index))
-                    {
-                        Console.WriteLine($"Invalid confirmation data received: {callbackData}"); // Log lỗi
-                        await botClient.SendTextMessageAsync(
-                            chatId: chatId,
-                            text: "Dữ liệu xác nhận không hợp lệ. Vui lòng thử lại.",
-                            cancellationToken: cancellationToken);
-                        return;
-                    }
-
-                    var selectedProjects = await ProjectsCommand.GetJenkinsProjectsAsync();
-                    if (index < 0 || index >= selectedProjects.Count)
-                    {
-                        Console.WriteLine($"Invalid confirmation project index: {index}"); // Log lỗi
-                        await botClient.SendTextMessageAsync(
-                            chatId: chatId,
-                            text: "Dự án không hợp lệ. Vui lòng thử lại.",
-                            cancellationToken: cancellationToken);
-                        return;
-                    }
-
-                    string selectedProject = selectedProjects[index];
-
-                    await botClient.DeleteMessageAsync(
-                        chatId: chatId,
-                        messageId: callbackQuery.Message.MessageId,
-                        cancellationToken: cancellationToken);
-
-                    await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, selectedProject, cancellationToken);
-                }
-                else if (callbackData == "confirm_no")
-                {
-                    await botClient.SendTextMessageAsync(
-                        chatId: chatId,
-                        text: "Yêu cầu của bạn đã bị hủy.",
-                        replyMarkup: new InlineKeyboardMarkup(new[]
-                        {
-                    InlineKeyboardButton.WithCallbackData("Bắt đầu lại", "start_again")
-                        }),
-                        cancellationToken: cancellationToken);
-
-                    await botClient.DeleteMessageAsync(
-                        chatId: chatId,
-                        messageId: callbackQuery.Message.MessageId,
-                        cancellationToken: cancellationToken);
-                }
-                else if (callbackData == "start_again")
-                {
-                    await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
-
-                    await botClient.DeleteMessageAsync(
-                        chatId: chatId,
-                        messageId: callbackQuery.Message.MessageId,
-                        cancellationToken: cancellationToken);
-                }
-
-                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
-                await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);
+                await HandleCallbackQueryAsync(update.CallbackQuery, cancellationToken);
             }
         }
-        //Có thể tối ưu đoạn này -mnduc9802
-        private static async Task HandleDeployConfirmation(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+
+        private static async Task HandleMessageAsync(Message message, CancellationToken cancellationToken)
         {
-            var projectPath = callbackQuery.Data.Split('_')[2];
+            var chatId = message.Chat.Id;
+            var text = message.Text;
 
-            await botClient.DeleteMessageAsync(
-                chatId: callbackQuery.Message.Chat.Id,
-                messageId: callbackQuery.Message.MessageId,
-                cancellationToken: cancellationToken);
+            if (feedbackState.TryGetValue(chatId, out bool isFeedback) && isFeedback)
+            {
+                feedbackState[chatId] = false;
+                await FeedbackCommand.HandleFeedbackResponseAsync(botClient, message, cancellationToken);
+                return;
+            }
 
-            await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, projectPath, cancellationToken);
+            switch (text)
+            {
+                case "/start":
+                    await StartCommand.ExecuteAsync(botClient, message, cancellationToken);
+                    break;
+                case "/deploy":
+                    await ShowProjectsKeyboard(chatId, cancellationToken);
+                    break;
+                case "/clear":
+                    await ClearCommand.RequestConfirmationAsync(botClient, chatId, cancellationToken);
+                    break;
+                case "/help":
+                    await HelpCommand.ExecuteAsync(botClient, message, cancellationToken);
+                    break;
+                case "/status":
+                    await StatusCommand.ExecuteAsync(botClient, message, cancellationToken);
+                    break;
+                case "/projects":
+                    await ProjectsCommand.ExecuteAsync(botClient, message, cancellationToken);
+                    break;
+                case "/feedback":
+                    feedbackState[chatId] = true;
+                    await FeedbackCommand.ExecuteAsync(botClient, message, cancellationToken);
+                    break;
+            }
         }
 
-        public static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+        private static async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var chatId = callbackQuery.Message.Chat.Id;
+            var data = callbackQuery.Data;
+
+            if (data.StartsWith("deploy_"))
+            {
+                await HandleDeployCallback(callbackQuery, cancellationToken);
+            }
+            else if (data.StartsWith("confirm_yes_"))
+            {
+                await HandleConfirmYesCallback(callbackQuery, cancellationToken);
+            }
+            else if (data == "confirm_no")
+            {
+                await HandleConfirmNoCallback(callbackQuery, cancellationToken);
+            }
+            else if (data == "start_again")
+            {
+                await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
+                await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
+            }
+
+            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
+            await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);
+        }
+
+        private static async Task HandleDeployCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var projectPath = callbackQuery.Data.Substring(7);
+            if (projectPath.Contains("/"))
+            {
+                await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, projectPath, cancellationToken);
+            }
+            else
+            {
+                await ShowConfirmationKeyboard(callbackQuery, projectPath, cancellationToken);
+            }
+        }
+
+        private static async Task HandleConfirmYesCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var projectIndex = int.Parse(callbackQuery.Data.Split('_')[2]);
+            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
+            var selectedProject = projects[projectIndex];
+
+            await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
+            await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, selectedProject, cancellationToken);
+        }
+
+        private static async Task HandleConfirmNoCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            await botClient.SendTextMessageAsync(
+                chatId: callbackQuery.Message.Chat.Id,
+                text: "Yêu cầu /deploy của bạn đã bị hủy.",
+                replyMarkup: new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Bắt đầu lại", "start_again")),
+                cancellationToken: cancellationToken);
+
+            await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
+        }
+
+        private static async Task ShowProjectsKeyboard(long chatId, CancellationToken cancellationToken)
+        {
+            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
+            var projectButtons = projects.Select((p, i) => new[] { InlineKeyboardButton.WithCallbackData(p, $"deploy_{i}") }).ToList();
+            var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
+
+            await botClient.SendTextMessageAsync(chatId, "Danh sách các dự án hiện tại:", replyMarkup: projectKeyboard, cancellationToken: cancellationToken);
+        }
+
+        private static async Task ShowConfirmationKeyboard(CallbackQuery callbackQuery, string projectPath, CancellationToken cancellationToken)
+        {
+            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
+            var projectIndex = int.Parse(projectPath);
+            var project = projects[projectIndex];
+
+            var confirmationKeyboard = new InlineKeyboardMarkup(new[]
+            {
+            InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
+            InlineKeyboardButton.WithCallbackData("No", "confirm_no")
+        });
+
+            await botClient.EditMessageTextAsync(
+                chatId: callbackQuery.Message.Chat.Id,
+                messageId: callbackQuery.Message.MessageId,
+                text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
+                replyMarkup: confirmationKeyboard,
+                cancellationToken: cancellationToken);
+        }
+
+        private static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
             var errorMessage = exception switch
             {

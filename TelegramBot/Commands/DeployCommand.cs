@@ -21,105 +21,75 @@ namespace TelegramBot.Commands
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
-            await botClient.SendTextMessageAsync(
-                chatId: message.Chat.Id,
-                text: $"Đang chuẩn bị triển khai {projectPath}...",
-                cancellationToken: cancellationToken);
+            await botClient.SendTextMessageAsync(message.Chat.Id, $"Đang chuẩn bị triển khai {projectPath}...", cancellationToken: cancellationToken);
 
-            // Kiểm tra xem projectPath có phải là folder không
             var jobs = await GetJobsInFolderAsync(projectPath);
 
             if (jobs.Count == 0)
             {
-                // Nếu không có job nào, thực hiện triển khai dự án
-                bool deployResult = await DeployProjectAsync(projectPath);
+                var deployResult = await DeployProjectAsync(projectPath);
                 await SendDeployResultAsync(botClient, message.Chat.Id, projectPath, deployResult, cancellationToken);
             }
             else
             {
-                // Nếu có nhiều job, hiển thị danh sách để người dùng chọn
-                var jobButtons = jobs.Select(job => new[]
-                {
-            InlineKeyboardButton.WithCallbackData(job, $"deploy_{projectPath}/{job}")
-        }).ToList();
-
+                var jobButtons = jobs.Select(job => new[] { InlineKeyboardButton.WithCallbackData(job, $"deploy_{projectPath}/{job}") }).ToList();
                 var jobKeyboard = new InlineKeyboardMarkup(jobButtons);
 
-                await botClient.SendTextMessageAsync(
-                    chatId: message.Chat.Id,
-                    text: $"Chọn job để triển khai trong {projectPath}:",
-                    replyMarkup: jobKeyboard,
-                    cancellationToken: cancellationToken);
+                await botClient.SendTextMessageAsync(message.Chat.Id, $"Chọn job để triển khai trong {projectPath}:", replyMarkup: jobKeyboard, cancellationToken: cancellationToken);
             }
         }
 
         private static async Task<List<string>> GetJobsInFolderAsync(string folderPath)
         {
-            using (var client = new HttpClient())
-            {
-                client.BaseAddress = new Uri(JENKINS_URL);
-                var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+            using var client = new HttpClient { BaseAddress = new Uri(JENKINS_URL) };
+            var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
-                var response = await client.GetAsync($"/job/{folderPath}/api/json?tree=jobs[name]");
+            var response = await client.GetAsync($"/job/{folderPath}/api/json?tree=jobs[name]");
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    return new List<string>();
-                }
+            if (!response.IsSuccessStatusCode) return new List<string>();
 
-                var content = await response.Content.ReadAsStringAsync();
-                var json = JObject.Parse(content);
+            var content = await response.Content.ReadAsStringAsync();
+            var json = JObject.Parse(content);
 
-                return json["jobs"]?.Select(job => job["name"].ToString()).ToList() ?? new List<string>();
-            }
+            return json["jobs"]?.Select(job => job["name"].ToString()).ToList() ?? new List<string>();
         }
 
         private static async Task<bool> DeployProjectAsync(string projectPath)
         {
             try
             {
-                using (var client = new HttpClient())
+                using var client = new HttpClient { BaseAddress = new Uri(JENKINS_URL) };
+                var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+
+                var crumbResponse = await client.GetAsync("/crumbIssuer/api/json");
+                if (!crumbResponse.IsSuccessStatusCode)
                 {
-                    client.BaseAddress = new Uri(JENKINS_URL);
-                    var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
-
-                    // Lấy crumb
-                    var crumbResponse = await client.GetAsync("/crumbIssuer/api/json");
-                    if (!crumbResponse.IsSuccessStatusCode)
-                    {
-                        Console.WriteLine($"Failed to get crumb. Status code: {crumbResponse.StatusCode}");
-                        return false;
-                    }
-
-                    var crumbJson = JObject.Parse(await crumbResponse.Content.ReadAsStringAsync());
-                    var crumb = crumbJson["crumb"].ToString();
-                    var crumbRequestField = crumbJson["crumbRequestField"].ToString();
-
-                    // Thêm crumb vào header
-                    client.DefaultRequestHeaders.Add(crumbRequestField, crumb);
-
-                    // Xây dựng URL cho job
-                    var jobPath = projectPath.Replace("/", "/job/");
-                    var url = $"/job/{jobPath}/build";
-                    Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
-
-                    // Gửi yêu cầu triển khai
-                    var response = await client.PostAsync(url, null);
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        Console.WriteLine($"Deployment failed. Status code: {response.StatusCode}");
-                        Console.WriteLine($"Response content: {await response.Content.ReadAsStringAsync()}");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Deployment request sent successfully.");
-                    }
-
-                    return response.IsSuccessStatusCode;
+                    Console.WriteLine($"Failed to get crumb. Status code: {crumbResponse.StatusCode}");
+                    return false;
                 }
+
+                var crumbJson = JObject.Parse(await crumbResponse.Content.ReadAsStringAsync());
+                client.DefaultRequestHeaders.Add(crumbJson["crumbRequestField"].ToString(), crumbJson["crumb"].ToString());
+
+                var jobPath = projectPath.Replace("/", "/job/");
+                var url = $"/job/{jobPath}/build";
+                Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
+
+                var response = await client.PostAsync(url, null);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Deployment failed. Status code: {response.StatusCode}");
+                    Console.WriteLine($"Response content: {await response.Content.ReadAsStringAsync()}");
+                }
+                else
+                {
+                    Console.WriteLine("Deployment request sent successfully.");
+                }
+
+                return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
@@ -130,14 +100,8 @@ namespace TelegramBot.Commands
 
         private static async Task SendDeployResultAsync(ITelegramBotClient botClient, long chatId, string project, bool success, CancellationToken cancellationToken)
         {
-            string resultMessage = success
-                ? $"Triển khai {project} thành công!"
-                : $"Triển khai {project} thất bại.";
-
-            await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: resultMessage,
-                cancellationToken: cancellationToken);
+            var resultMessage = success ? $"Triển khai {project} thành công!" : $"Triển khai {project} thất bại.";
+            await botClient.SendTextMessageAsync(chatId, resultMessage, cancellationToken: cancellationToken);
         }
     }
 }

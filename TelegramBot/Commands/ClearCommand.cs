@@ -40,25 +40,15 @@ namespace TelegramBot.Commands
             }
             else if (callbackData == "clear_no")
             {
-                // Xóa tin nhắn chứa inline keyboard ngay lập tức
+                // Xóa tin nhắn thông báo hủy lệnh
                 await botClient.DeleteMessageAsync(
                     chatId: chatId,
                     messageId: callbackQuery.Message.MessageId,
                     cancellationToken: cancellationToken);
 
-                // Gửi tin nhắn thông báo hủy lệnh
-                var cancellationMessage = await botClient.SendTextMessageAsync(
+                await botClient.SendTextMessageAsync(
                     chatId: chatId,
-                    text: "Yêu cầu của bạn đã bị hủy.",
-                    cancellationToken: cancellationToken);
-
-                // Đợi 5 giây trước khi xóa tin nhắn thông báo hủy lệnh
-                await Task.Delay(5000, cancellationToken);
-
-                // Xóa tin nhắn thông báo hủy lệnh
-                await botClient.DeleteMessageAsync(
-                    chatId: chatId,
-                    messageId: cancellationMessage.MessageId,
+                    text: "Yêu cầu /clear của bạn đã bị hủy.",
                     cancellationToken: cancellationToken);
             }
 
