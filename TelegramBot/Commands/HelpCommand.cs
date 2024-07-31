@@ -12,11 +12,12 @@ namespace TelegramBot.Commands
         {
             var helpText = "Các lệnh có sẵn:\n" +
                            "/start - Khởi tạo bot\n" +
-                           "/clear - Xóa tất cả tin nhắn\n" +
-                           "/help - Hiển thị danh sách lệnh\n" +
-                           "/status - Xem trạng thái hiện tại\n" +
                            "/projects - Xem danh sách các dự án\n" +
-                           "/feedback - Gửi phản hồi";
+                           "/deploy - Triển khai dự án\n" +
+                           "/status - Xem trạng thái hiện tại\n" +
+                           "/clear - Xóa tất cả tin nhắn\n" +
+                           "/feedback - Gửi phản hồi" +
+                           "/help - Hiển thị danh sách lệnh\n";
 
             await botClient.SendTextMessageAsync(
                 chatId: message.Chat.Id,
