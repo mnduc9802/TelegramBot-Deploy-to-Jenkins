@@ -16,7 +16,7 @@ namespace TelegramBot.Commands
                            "/deploy - Triển khai dự án\n" +
                            "/status - Xem trạng thái hiện tại\n" +
                            "/clear - Xóa tất cả tin nhắn\n" +
-                           "/feedback - Gửi phản hồi" +
+                           "/feedback - Gửi phản hồi\n" +
                            "/help - Hiển thị danh sách lệnh\n";
 
             await botClient.SendTextMessageAsync(
