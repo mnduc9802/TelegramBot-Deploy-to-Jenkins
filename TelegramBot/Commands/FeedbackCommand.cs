@@ -20,7 +20,7 @@ namespace TelegramBot.Commands
         {
             await botClient.SendTextMessageAsync(
                 chatId: message.Chat.Id,
-                text: "Cảm ơn bạn đã phản hồi dịch vụ của chúng tôi.",
+                text: "Cảm ơn bạn đã phản hồi dịch vụ của tôi.",
                 cancellationToken: cancellationToken
             );
         }
