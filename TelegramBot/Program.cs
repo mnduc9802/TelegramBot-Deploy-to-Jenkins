@@ -111,14 +111,14 @@ namespace TelegramBot
 
         private static async Task HandleDeployCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var projectPath = callbackQuery.Data.Substring(7);
-            if (projectPath.Contains("/"))
+            var data = callbackQuery.Data.Substring(7);
+            if (int.TryParse(data, out int projectIndex))
             {
-                await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, projectPath, cancellationToken);
+                await ShowConfirmationKeyboard(callbackQuery, projectIndex, cancellationToken);
             }
             else
             {
-                await ShowConfirmationKeyboard(callbackQuery, projectPath, cancellationToken);
+                await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
         }
 
@@ -152,17 +152,16 @@ namespace TelegramBot
             await botClient.SendTextMessageAsync(chatId, "Danh sách các dự án hiện tại:", replyMarkup: projectKeyboard, cancellationToken: cancellationToken);
         }
 
-        private static async Task ShowConfirmationKeyboard(CallbackQuery callbackQuery, string projectPath, CancellationToken cancellationToken)
+        private static async Task ShowConfirmationKeyboard(CallbackQuery callbackQuery, int projectIndex, CancellationToken cancellationToken)
         {
             var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
-            var projectIndex = int.Parse(projectPath);
             var project = projects[projectIndex];
 
             var confirmationKeyboard = new InlineKeyboardMarkup(new[]
             {
-            InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
-            InlineKeyboardButton.WithCallbackData("No", "confirm_no")
-        });
+        InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
+        InlineKeyboardButton.WithCallbackData("No", "confirm_no")
+    });
 
             await botClient.EditMessageTextAsync(
                 chatId: callbackQuery.Message.Chat.Id,
