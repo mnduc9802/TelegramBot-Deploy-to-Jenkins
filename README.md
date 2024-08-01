@@ -54,11 +54,6 @@ Bot được thiết kế để xử lý các lệnh và phản hồi từ ngư�
 - **Lệnh**: `/help`
 - **Hành động**: Gửi tin nhắn hướng dẫn.
 
-### MenuCommand
-- **Mô tả**: Hiển thị menu các lệnh của bot.
-- **Lệnh**: `/menu`
-- **Hành động**: Gửi tin nhắn menu các lệnh của bot.
-
 ### FeedbackCommand
 - **Mô tả**: Yêu cầu và xử lý phản hồi từ người dùng.
 - **Lệnh**: `/feedback`
