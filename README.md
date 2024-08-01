@@ -1,45 +1,38 @@
-# Telegram Bot
+# Telegram Deploy Bot by mnduc9802
+
+## Giới thiệu
+
+Bot Telegram này được thiết kế để hỗ trợ triển khai các dự án từ Jenkins. Bot cung cấp một số lệnh để người dùng có thể tương tác và thực hiện các hoạt động như triển khai dự án, xem trạng thái, gửi phản hồi, và nhiều hơn nữa.
 
 ## Concept
 
-Bot Telegram này cung cấp các chức năng quản lý dự án, triển khai dự án, theo dõi trạng thái và phản hồi. Nó giúp người dùng tương tác với bot để thực hiện các thao tác liên quan đến dự án một cách thuận tiện và dễ dàng.
+Bot được xây dựng dựa trên các khái niệm cơ bản sau:
+
+1. **Command**: Các lệnh mà người dùng có thể gửi cho bot để thực hiện các chức năng cụ thể.
+2. **Update**: Các cập nhật từ Telegram, bao gồm tin nhắn, callback query, và các sự kiện khác.
+3. **Handler**: Các phương thức xử lý các cập nhật và thực hiện các hành động tương ứng.
+4. **Jenkins Integration**: Kết nối và tương tác với Jenkins để triển khai các dự án.
 
 ## Logic
 
 Bot được thiết kế để xử lý các lệnh và phản hồi từ người dùng thông qua các tin nhắn văn bản và các nút inline. Bot theo dõi trạng thái phản hồi của người dùng và cập nhật thông tin tương ứng.
 
-### Các Thành Phần Chính
-
-1. **Commands**: Xử lý các lệnh từ người dùng.
-2. **Callback Queries**: Xử lý các phản hồi từ các nút inline.
-3. **Feedback State**: Theo dõi trạng thái phản hồi của người dùng để xử lý phản hồi một cách chính xác.
-4. **Deployment Simulation**: Giả lập quá trình triển khai dự án và thông báo kết quả cho người dùng.
-
 ## Trigger
 
-1. **Tin nhắn văn bản từ người dùng**: Khi người dùng gửi tin nhắn với các lệnh như `/start`, `/projects`, `/deploy`, `/status`, `/help`, hoặc `/feedback`.
-2. **Callback query từ các nút inline**: Khi người dùng nhấn các nút inline như "Projects", "Deploy Project", "Status", "Help", hoặc các nút xác nhận triển khai.
+1. Bot bắt đầu nhận cập nhật từ Telegram khi phương thức `StartReceiving` được gọi.
+2. Mỗi cập nhật từ Telegram được xử lý bởi `HandleUpdateAsync`.
 
 ## Event
 
-1. **Lệnh `/start`**: Kích hoạt khi người dùng gửi lệnh `/start`.
-2. **Lệnh `/projects`**: Kích hoạt khi người dùng gửi lệnh `/projects`.
-3. **Lệnh `/deploy`**: Kích hoạt khi người dùng gửi lệnh `/deploy`.
-4. **Lệnh `/status`**: Kích hoạt khi người dùng gửi lệnh `/status`.
-5. **Lệnh `/help`**: Kích hoạt khi người dùng gửi lệnh `/help`.
-6. **Lệnh `/feedback`**: Kích hoạt khi người dùng gửi lệnh `/feedback`.
-7. **Callback query "Projects"**: Kích hoạt khi người dùng nhấn nút "Projects".
-8. **Callback query "Deploy Project"**: Kích hoạt khi người dùng nhấn nút "Deploy Project".
-9. **Callback query "Status"**: Kích hoạt khi người dùng nhấn nút "Status".
-10. **Callback query "Help"**: Kích hoạt khi người dùng nhấn nút "Help".
-11. **Callback query xác nhận triển khai**: Kích hoạt khi người dùng nhấn nút "Yes" hoặc "No" trong quá trình xác nhận triển khai.
+1. **Message**: Khi bot nhận được một tin nhắn văn bản từ người dùng, nó sẽ gọi `HandleMessageAsync` để xử lý tin nhắn đó.
+2. **Callback Query**: Khi bot nhận được một callback query (từ một nút bấm inline), nó sẽ gọi `HandleCallbackQueryAsync` để xử lý.
 
 ## Command
 
 ### StartCommand
 - **Mô tả**: Gửi tin nhắn chào mừng và các tùy chọn lệnh.
 - **Lệnh**: `/start`
-- **Hành động**: Gửi tin nhắn với các nút "Projects", "Deploy Project", "Status", "Help".
+- **Hành động**: Gửi tin nhắn chào mừng.
 
 ### ProjectsCommand
 - **Mô tả**: Hiển thị danh sách các dự án.
@@ -48,11 +41,11 @@ Bot được thiết kế để xử lý các lệnh và phản hồi từ ngư�
 
 ### DeployCommand
 - **Mô tả**: Triển khai một dự án được chọn.
-- **Lệnh**: N/A (kích hoạt từ callback query)
+- **Lệnh**: `/deploy`
 - **Hành động**: Gửi tin nhắn xác nhận và thực hiện triển khai dự án.
 
 ### StatusCommand
-- **Mô tả**: Hiển thị trạng thái của bot và thông báo nếu mất kết nối mạng.
+- **Mô tả**: Hiển thị trạng thái của bot.
 - **Lệnh**: `/status`
 - **Hành động**: Gửi tin nhắn trạng thái bot và kiểm tra kết nối mạng.
 
@@ -74,8 +67,11 @@ Bot được thiết kế để xử lý các lệnh và phản hồi từ ngư�
 2. Sao chép mã nguồn của bot.
 3. Thêm token của bot vào mã nguồn.
 4. Chạy chương trình bằng lệnh `dotnet run`.
-5. Sử dụng các lệnh như `/start`, `/projects`, `/deploy`, `/status`, `/help`, hoặc `/feedback` để tương tác với bot.
+5. Sử dụng các lệnh như `/start`, `/projects`, `/deploy`, `/status`, `/help`, `/menu` hoặc `/feedback` để tương tác với bot.
 
 ---
 
-**Lưu ý**: Đảm bảo bot của bạn đã được bật và có quyền truy cập Internet để nhận và gửi tin nhắn.
+## Ghi chú
+
+- Đảm bảo rằng bot của bạn đã được kích hoạt và có quyền truy cập vào các API cần thiết từ Telegram.
+- Đảm bảo rằng bạn đã cấu hình đúng thông tin kết nối tới Jenkins.
