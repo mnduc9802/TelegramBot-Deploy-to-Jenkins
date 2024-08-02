@@ -20,6 +20,8 @@ namespace TelegramBot.Commands
         private const string JENKINS_USERNAME = "bot";
         private const string JENKINS_PASSWORD = "1qazxsw2!@";
         public static Dictionary<string, string> jobUrlMap = new Dictionary<string, string>();
+        private static Dictionary<long, (List<JobInfo> Jobs, string ProjectPath)> chatState = new Dictionary<long, (List<JobInfo>, string)>();
+        private const int JOBS_PER_PAGE = 5; // Số job hiển thị trên mỗi trang
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
@@ -38,31 +40,79 @@ namespace TelegramBot.Commands
             }
             else
             {
-                jobUrlMap.Clear(); // Clear previous mappings
-                var jobButtons = jobs.Select(job =>
-                {
-                    var shortId = Guid.NewGuid().ToString("N").Substring(0, 8); // Generate a short unique ID
-                    jobUrlMap[shortId] = job.Url; // Store the mapping
-                    return new[] { InlineKeyboardButton.WithCallbackData(job.Name, $"deploy_{shortId}") };
-                }).ToList();
-                var jobKeyboard = new InlineKeyboardMarkup(jobButtons);
-
-                await botClient.SendTextMessageAsync(message.Chat.Id, $"Chọn job để triển khai trong {projectPath}:", replyMarkup: jobKeyboard, cancellationToken: cancellationToken);
+                chatState[message.Chat.Id] = (jobs, projectPath);
+                await ShowJobsPage(botClient, message.Chat.Id, jobs, 0, projectPath, cancellationToken);
             }
+        }
+
+        private static async Task ShowJobsPage(ITelegramBotClient botClient, long chatId, List<JobInfo> jobs, int page, string projectPath, CancellationToken cancellationToken)
+        {
+            int startIndex = page * JOBS_PER_PAGE;
+            var pageJobs = jobs.Skip(startIndex).Take(JOBS_PER_PAGE).ToList();
+
+            jobUrlMap.Clear(); // Clear previous mappings
+            var jobButtons = pageJobs.Select(job =>
+            {
+                var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                jobUrlMap[shortId] = job.Url;
+                return new[] { InlineKeyboardButton.WithCallbackData(job.Name, $"deploy_{shortId}") };
+            }).ToList();
+
+            // Add navigation buttons
+            var navigationButtons = new List<InlineKeyboardButton>();
+            if (page > 0)
+            {
+                navigationButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️ Trước", $"page_{page - 1}"));
+            }
+            if (startIndex + pageJobs.Count < jobs.Count)
+            {
+                navigationButtons.Add(InlineKeyboardButton.WithCallbackData("Sau ➡️", $"page_{page + 1}"));
+            }
+            if (navigationButtons.Any())
+            {
+                jobButtons.Add(navigationButtons.ToArray());
+            }
+
+            var jobKeyboard = new InlineKeyboardMarkup(jobButtons);
+
+            await botClient.SendTextMessageAsync(
+                chatId,
+                $"Chọn job để triển khai trong {projectPath} (Trang {page + 1}/{(jobs.Count - 1) / JOBS_PER_PAGE + 1}):",
+                replyMarkup: jobKeyboard,
+                cancellationToken: cancellationToken
+            );
         }
 
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var shortId = callbackQuery.Data.Replace("deploy_", "");
-            if (jobUrlMap.TryGetValue(shortId, out string jobUrl))
+            var chatId = callbackQuery.Message.Chat.Id;
+
+            if (callbackQuery.Data.StartsWith("page_"))
             {
-                var deployResult = await DeployProjectAsync(jobUrl);
-                await SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken);
-                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Đã bắt đầu triển khai job", cancellationToken: cancellationToken);
+                if (chatState.TryGetValue(chatId, out var state))
+                {
+                    var page = int.Parse(callbackQuery.Data.Split('_')[1]);
+                    await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
+                    await ShowJobsPage(botClient, chatId, state.Jobs, page, state.ProjectPath, cancellationToken);
+                }
+                else
+                {
+                    await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Không thể tìm thấy thông tin trạng thái. Vui lòng thử lại từ đầu.", cancellationToken: cancellationToken);
+                }
             }
-            else
+            else if (callbackQuery.Data.StartsWith("deploy_"))
             {
-                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
+                var shortId = callbackQuery.Data.Replace("deploy_", "");
+                if (jobUrlMap.TryGetValue(shortId, out string jobUrl))
+                {
+                    var deployResult = await DeployProjectAsync(jobUrl);
+                    await SendDeployResultAsync(botClient, chatId, jobUrl, deployResult, cancellationToken);
+                    await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Đã bắt đầu triển khai job", cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
+                }
             }
         }
 

@@ -91,6 +91,10 @@ namespace TelegramBot
             {
                 await HandleDeployCallback(callbackQuery, cancellationToken);
             }
+            else if (data.StartsWith("page_"))
+            {
+                await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+            }
             else if (data.StartsWith("confirm_yes_"))
             {
                 await HandleConfirmYesCallback(callbackQuery, cancellationToken);
