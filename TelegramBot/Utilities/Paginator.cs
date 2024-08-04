@@ -10,7 +10,7 @@ namespace TelegramBot.Utilities
         public static Dictionary<string, string> jobUrlMap = new Dictionary<string, string>();
         public static Dictionary<long, (List<JobInfo> Jobs, string ProjectPath)> chatState = new Dictionary<long, (List<JobInfo>, string)>();
 
-        public static async Task ShowJobsPage(ITelegramBotClient botClient, long chatId, List<JobInfo> jobs, int page, string projectPath, CancellationToken cancellationToken)
+        public static async Task ShowJobsPage(ITelegramBotClient botClient, long chatId, List<JobInfo> jobs, int page, string projectPath, CancellationToken cancellationToken, int? messageId = null)
         {
             int startIndex = page * JOBS_PER_PAGE;
             var pageJobs = jobs.Skip(startIndex).Take(JOBS_PER_PAGE).ToList();
@@ -40,25 +40,38 @@ namespace TelegramBot.Utilities
 
             var jobKeyboard = new InlineKeyboardMarkup(jobButtons);
 
-            await botClient.SendTextMessageAsync(
-                chatId,
-                $"Chọn job để triển khai trong {projectPath} (Trang {page + 1}/{(jobs.Count - 1) / JOBS_PER_PAGE + 1}):",
-                replyMarkup: jobKeyboard,
-                cancellationToken: cancellationToken
-            );
+            if (messageId.HasValue)
+            {
+                await botClient.EditMessageTextAsync(
+                    chatId,
+                    messageId.Value,
+                    $"Chọn job để triển khai trong {projectPath} (Trang {page + 1}/{(jobs.Count - 1) / JOBS_PER_PAGE + 1}):",
+                    replyMarkup: jobKeyboard,
+                    cancellationToken: cancellationToken
+                );
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(
+                    chatId,
+                    $"Chọn job để triển khai trong {projectPath} (Trang {page + 1}/{(jobs.Count - 1) / JOBS_PER_PAGE + 1}):",
+                    replyMarkup: jobKeyboard,
+                    cancellationToken: cancellationToken
+                );
+            }
         }
 
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var chatId = callbackQuery.Message.Chat.Id;
+            var messageId = callbackQuery.Message.MessageId;
 
             if (callbackQuery.Data.StartsWith("page_"))
             {
                 if (chatState.TryGetValue(chatId, out var state))
                 {
                     var page = int.Parse(callbackQuery.Data.Split('_')[1]);
-                    await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
-                    await ShowJobsPage(botClient, chatId, state.Jobs, page, state.ProjectPath, cancellationToken);
+                    await ShowJobsPage(botClient, chatId, state.Jobs, page, state.ProjectPath, cancellationToken, messageId);
                 }
                 else
                 {
@@ -66,6 +79,7 @@ namespace TelegramBot.Utilities
                 }
             }
         }
+
     }
 
     public class JobInfo
