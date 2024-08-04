@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.ReplyMarkups;
+using TelegramBot.Utilities;
 
 namespace TelegramBot.Commands
 {
@@ -12,48 +12,27 @@ namespace TelegramBot.Commands
     {
         public static async Task RequestConfirmationAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
-            var inlineKeyboard = new InlineKeyboardMarkup(new[]
-            {
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData("Có", "clear_yes"),
-                    InlineKeyboardButton.WithCallbackData("Không", "clear_no")
-                }
-            });
-
-            await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: "Bạn có chắc chắn muốn xóa tất cả tin nhắn không?",
-                replyMarkup: inlineKeyboard,
-                cancellationToken: cancellationToken);
+            await ClearConfirmation.RequestConfirmationAsync(botClient, chatId, cancellationToken);
         }
 
         public static async Task HandleClearCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var chatId = callbackQuery.Message.Chat.Id;
-            var callbackData = callbackQuery.Data;
+            await ClearConfirmation.HandleConfirmationCallbackAsync(botClient, callbackQuery,
+                async () => await ExecuteAsync(botClient, callbackQuery.Message.Chat.Id, cancellationToken),
+                async () =>
+                {
+                    var chatId = callbackQuery.Message.Chat.Id;
+                    await botClient.DeleteMessageAsync(
+                        chatId: chatId,
+                        messageId: callbackQuery.Message.MessageId,
+                        cancellationToken: cancellationToken);
 
-            if (callbackData == "clear_yes")
-            {
-                // Xóa tất cả tin nhắn khi người dùng chọn "Có"
-                await ExecuteAsync(botClient, chatId, cancellationToken);
-            }
-            else if (callbackData == "clear_no")
-            {
-                // Xóa tin nhắn thông báo hủy lệnh
-                await botClient.DeleteMessageAsync(
-                    chatId: chatId,
-                    messageId: callbackQuery.Message.MessageId,
-                    cancellationToken: cancellationToken);
-
-                await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: "Yêu cầu /clear của bạn đã bị hủy.",
-                    cancellationToken: cancellationToken);
-            }
-
-            // Trả lời callback query để Telegram biết rằng bạn đã xử lý nó
-            await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
+                    await botClient.SendTextMessageAsync(
+                        chatId: chatId,
+                        text: "Yêu cầu /clear của bạn đã bị hủy.",
+                        cancellationToken: cancellationToken);
+                },
+                cancellationToken);
         }
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)

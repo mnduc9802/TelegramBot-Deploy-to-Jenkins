@@ -1,13 +1,14 @@
 ﻿using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Commands;
+using TelegramBot.Utilities;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot
 {
@@ -97,11 +98,11 @@ namespace TelegramBot
             }
             else if (data.StartsWith("confirm_yes_"))
             {
-                await HandleConfirmYesCallback(callbackQuery, cancellationToken);
+                await DeployConfirmation.HandleConfirmYesCallback(botClient, callbackQuery, cancellationToken);
             }
             else if (data == "confirm_no")
             {
-                await HandleConfirmNoCallback(callbackQuery, cancellationToken);
+                await DeployConfirmation.HandleConfirmNoCallback(botClient, callbackQuery, cancellationToken);
             }
             else if (data == "start_again")
             {
@@ -118,33 +119,12 @@ namespace TelegramBot
             var data = callbackQuery.Data.Substring(7);
             if (int.TryParse(data, out int projectIndex))
             {
-                await ShowConfirmationKeyboard(callbackQuery, projectIndex, cancellationToken);
+                await DeployConfirmation.ShowConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
             }
             else
             {
                 await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
-        }
-
-        private static async Task HandleConfirmYesCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
-        {
-            var projectIndex = int.Parse(callbackQuery.Data.Split('_')[2]);
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
-            var selectedProject = projects[projectIndex];
-
-            await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
-            await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, selectedProject, cancellationToken);
-        }
-
-        private static async Task HandleConfirmNoCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
-        {
-            await botClient.SendTextMessageAsync(
-                chatId: callbackQuery.Message.Chat.Id,
-                text: "Yêu cầu /deploy của bạn đã bị hủy.",
-                replyMarkup: new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Bắt đầu lại", "start_again")),
-                cancellationToken: cancellationToken);
-
-            await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
         }
 
         private static async Task ShowProjectsKeyboard(long chatId, CancellationToken cancellationToken)
@@ -154,25 +134,6 @@ namespace TelegramBot
             var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
 
             await botClient.SendTextMessageAsync(chatId, "Danh sách các dự án hiện tại:", replyMarkup: projectKeyboard, cancellationToken: cancellationToken);
-        }
-
-        private static async Task ShowConfirmationKeyboard(CallbackQuery callbackQuery, int projectIndex, CancellationToken cancellationToken)
-        {
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
-            var project = projects[projectIndex];
-
-            var confirmationKeyboard = new InlineKeyboardMarkup(new[]
-            {
-        InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
-        InlineKeyboardButton.WithCallbackData("No", "confirm_no")
-    });
-
-            await botClient.EditMessageTextAsync(
-                chatId: callbackQuery.Message.Chat.Id,
-                messageId: callbackQuery.Message.MessageId,
-                text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
-                replyMarkup: confirmationKeyboard,
-                cancellationToken: cancellationToken);
         }
 
         private static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
