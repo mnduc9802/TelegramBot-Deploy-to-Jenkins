@@ -44,6 +44,9 @@ namespace TelegramBot.Commands
                 var shortId = callbackQuery.Data.Replace("deploy_", "");
                 if (Paginator.jobUrlMap.TryGetValue(shortId, out string jobUrl))
                 {
+                    // Xóa tin nhắn chứa danh sách job
+                    await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
+
                     var deployResult = await DeployProjectAsync(jobUrl);
                     await SendDeployResultAsync(botClient, chatId, jobUrl, deployResult, cancellationToken);
                     await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Đã bắt đầu triển khai job", cancellationToken: cancellationToken);
