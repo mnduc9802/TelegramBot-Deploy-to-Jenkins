@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -9,7 +6,7 @@ namespace TelegramBot.Utilities
 {
     public static class ClearConfirmation
     {
-        public static async Task RequestConfirmationAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        public static async Task ClearConfirmationKeyboard(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
             var inlineKeyboard = new InlineKeyboardMarkup(new[]
             {

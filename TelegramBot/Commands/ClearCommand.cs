@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.Utilities;
 
@@ -10,9 +6,9 @@ namespace TelegramBot.Commands
 {
     public class ClearCommand
     {
-        public static async Task RequestConfirmationAsync(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        public static async Task ClearConfirmationKeyboard(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
-            await ClearConfirmation.RequestConfirmationAsync(botClient, chatId, cancellationToken);
+            await ClearConfirmation.ClearConfirmationKeyboard(botClient, chatId, cancellationToken);
         }
 
         public static async Task HandleClearCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)

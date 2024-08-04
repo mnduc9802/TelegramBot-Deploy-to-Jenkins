@@ -5,9 +5,6 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Commands;
 using TelegramBot.Utilities;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot
@@ -65,7 +62,7 @@ namespace TelegramBot
                     await ShowProjectsKeyboard(chatId, cancellationToken);
                     break;
                 case "/clear":
-                    await ClearCommand.RequestConfirmationAsync(botClient, chatId, cancellationToken);
+                    await ClearCommand.ClearConfirmationKeyboard(botClient, chatId, cancellationToken);
                     break;
                 case "/help":
                     await HelpCommand.ExecuteAsync(botClient, message, cancellationToken);
@@ -119,7 +116,7 @@ namespace TelegramBot
             var data = callbackQuery.Data.Substring(7);
             if (int.TryParse(data, out int projectIndex))
             {
-                await DeployConfirmation.ShowConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
+                await DeployConfirmation.DeployConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
             }
             else
             {
