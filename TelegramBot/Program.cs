@@ -4,8 +4,8 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Commands;
-using TelegramBot.Utilities;
 using Telegram.Bot.Types.ReplyMarkups;
+using TelegramBot.Utilities.DeployUtilities;
 
 namespace TelegramBot
 {
@@ -45,6 +45,12 @@ namespace TelegramBot
         {
             var chatId = message.Chat.Id;
             var text = message.Text;
+
+            if (message.ReplyToMessage?.Text == "Vui lòng nhập tên job bạn muốn tìm kiếm:")
+            {
+                await JobFinder.HandleSearchQuery(botClient, message, cancellationToken);
+                return;
+            }
 
             if (feedbackState.TryGetValue(chatId, out bool isFeedback) && isFeedback)
             {
@@ -106,6 +112,11 @@ namespace TelegramBot
                 await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
             }
+            else if (data == "search")
+            {
+                await JobFinder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
+            }
+
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
             await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);

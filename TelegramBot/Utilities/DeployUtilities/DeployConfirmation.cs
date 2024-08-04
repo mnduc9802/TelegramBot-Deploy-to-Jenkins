@@ -3,7 +3,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Commands;
 
-namespace TelegramBot.Utilities
+namespace TelegramBot.Utilities.DeployUtilities
 {
     public static class DeployConfirmation
     {

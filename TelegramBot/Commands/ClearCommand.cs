@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBot.Utilities;
+using TelegramBot.Utilities.ClearUtilities;
 
 namespace TelegramBot.Commands
 {

@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace TelegramBot.Utilities
+namespace TelegramBot.Utilities.ClearUtilities
 {
     public static class ClearConfirmation
     {
@@ -36,7 +36,7 @@ namespace TelegramBot.Utilities
             {
                 await onCancel();
             }
-            
+
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
         }
     }

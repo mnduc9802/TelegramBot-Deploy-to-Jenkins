@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.Utilities;
+using TelegramBot.Utilities.DeployUtilities;
 
 namespace TelegramBot.Commands
 {
@@ -42,7 +43,7 @@ namespace TelegramBot.Commands
             if (callbackQuery.Data.StartsWith("deploy_"))
             {
                 var shortId = callbackQuery.Data.Replace("deploy_", "");
-                if (Paginator.jobUrlMap.TryGetValue(shortId, out string jobUrl))
+                if (JobKeyboardManager.jobUrlMap.TryGetValue(shortId, out string jobUrl))
                 {
                     // Xóa tin nhắn chứa danh sách job
                     await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
