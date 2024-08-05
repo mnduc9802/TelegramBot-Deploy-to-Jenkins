@@ -31,6 +31,14 @@ namespace TelegramBot.Utilities.DeployUtilities
             }
             keyboardButtons.Add(navigationAndSearchButtons);
 
+            // Go Back and Exit buttons
+            var goBackAndExitButtons = new List<InlineKeyboardButton>
+            {
+                InlineKeyboardButton.WithCallbackData("🔙 Go Back", "go_back"),
+                InlineKeyboardButton.WithCallbackData("❌ Exit", "exit")
+            };
+            keyboardButtons.Add(goBackAndExitButtons);
+
             return new InlineKeyboardMarkup(keyboardButtons);
         }
     }
