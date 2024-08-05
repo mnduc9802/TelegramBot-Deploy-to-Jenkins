@@ -18,23 +18,18 @@ namespace TelegramBot.Utilities.DeployUtilities
                 keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData(job.Name, $"deploy_{shortId}") });
             }
 
-            // Navigation buttons
-            var navigationButtons = new List<InlineKeyboardButton>();
+            // Navigation and Search buttons on the same row
+            var navigationAndSearchButtons = new List<InlineKeyboardButton>();
             if (currentPage > 0)
             {
-                navigationButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️ Trước", $"page_{currentPage - 1}"));
+                navigationAndSearchButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"page_{currentPage - 1}"));
             }
+            navigationAndSearchButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search"));
             if (currentPage < totalPages - 1)
             {
-                navigationButtons.Add(InlineKeyboardButton.WithCallbackData("Sau ➡️", $"page_{currentPage + 1}"));
+                navigationAndSearchButtons.Add(InlineKeyboardButton.WithCallbackData("➡️", $"page_{currentPage + 1}"));
             }
-            if (navigationButtons.Any())
-            {
-                keyboardButtons.Add(navigationButtons);
-            }
-
-            // Search button
-            keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData("🔍 Tìm kiếm", "search") });
+            keyboardButtons.Add(navigationAndSearchButtons);
 
             return new InlineKeyboardMarkup(keyboardButtons);
         }
