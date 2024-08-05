@@ -1,5 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
+using TelegramBot.Models;
 using TelegramBot.Utilities.DeployUtilities;
 
 namespace TelegramBot.Utilities
@@ -57,11 +58,5 @@ namespace TelegramBot.Utilities
                 }
             }
         }
-    }
-
-    public class JobInfo
-    {
-        public string Name { get; set; }
-        public string Url { get; set; }
     }
 }
