@@ -123,6 +123,14 @@ namespace TelegramBot
             {
                 await DeployConfirmation.HandleConfirmNoCallback(botClient, callbackQuery, cancellationToken);
             }
+            else if (data.StartsWith("confirm_job_yes_"))
+            {
+                await DeployConfirmation.HandleConfirmJobYesCallback(botClient, callbackQuery, cancellationToken);
+            }
+            else if (data == "confirm_job_no")
+            {
+                await DeployConfirmation.HandleConfirmJobNoCallback(botClient, callbackQuery, cancellationToken);
+            }
             else if (data == "start_again")
             {
                 await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
@@ -132,7 +140,6 @@ namespace TelegramBot
             {
                 await JobFinder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
             }
-
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
             await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);
