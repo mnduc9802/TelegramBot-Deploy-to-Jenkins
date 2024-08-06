@@ -43,6 +43,21 @@ namespace TelegramBot
             var chatId = message.Chat.Id;
             var text = message.Text;
 
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            var botUsername = (await botClient.GetMeAsync(cancellationToken)).Username;
+            var commandParts = text.Split('@');
+
+            if (commandParts.Length == 2 && commandParts[1].Equals(botUsername, StringComparison.OrdinalIgnoreCase))
+            {
+                text = commandParts[0]; 
+            }
+            else if (message.Chat.Type != ChatType.Private && !text.Contains("@" + botUsername))
+            {
+                return;
+            }
+
             if (message.ReplyToMessage?.Text == "Vui lòng nhập tên job bạn muốn tìm kiếm:")
             {
                 await JobFinder.HandleSearchQuery(botClient, message, cancellationToken);
@@ -56,30 +71,34 @@ namespace TelegramBot
                 return;
             }
 
-            switch (text)
+            if (text.StartsWith("/"))
             {
-                case "/start":
-                    await StartCommand.ExecuteAsync(botClient, message, cancellationToken);
-                    break;
-                case "/deploy":
-                    await ShowProjectsKeyboard(chatId, cancellationToken);
-                    break;
-                case "/clear":
-                    await ClearCommand.ClearConfirmationKeyboard(botClient, chatId, cancellationToken);
-                    break;
-                case "/help":
-                    await HelpCommand.ExecuteAsync(botClient, message, cancellationToken);
-                    break;
-                case "/status":
-                    await StatusCommand.ExecuteAsync(botClient, message, cancellationToken);
-                    break;
-                case "/projects":
-                    await ProjectsCommand.ExecuteAsync(botClient, message, cancellationToken);
-                    break;
-                case "/feedback":
-                    feedbackState[chatId] = true;
-                    await FeedbackCommand.ExecuteAsync(botClient, message, cancellationToken);
-                    break;
+                var command = text.Split(' ')[0].ToLower();
+                switch (command)
+                {
+                    case "/start":
+                        await StartCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                    case "/deploy":
+                        await ShowProjectsKeyboard(chatId, cancellationToken);
+                        break;
+                    case "/clear":
+                        await ClearCommand.ClearConfirmationKeyboard(botClient, chatId, cancellationToken);
+                        break;
+                    case "/help":
+                        await HelpCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                    case "/status":
+                        await StatusCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                    case "/projects":
+                        await ProjectsCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                    case "/feedback":
+                        feedbackState[chatId] = true;
+                        await FeedbackCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                }
             }
         }
 
