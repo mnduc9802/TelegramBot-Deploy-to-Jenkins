@@ -5,7 +5,7 @@ using TelegramBot.Utilities.DeployUtilities;
 
 namespace TelegramBot.Utilities
 {
-    public class Paginator
+    public class JobPaginator
     {
         private const int JOBS_PER_PAGE = 5;
         public static Dictionary<long, (List<JobInfo> Jobs, string ProjectPath)> chatState = new Dictionary<long, (List<JobInfo>, string)>();

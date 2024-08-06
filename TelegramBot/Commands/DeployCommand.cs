@@ -32,8 +32,8 @@ namespace TelegramBot.Commands
             }
             else
             {
-                Paginator.chatState[message.Chat.Id] = (jobs, projectPath);
-                await Paginator.ShowJobsPage(botClient, message.Chat.Id, jobs, 0, projectPath, cancellationToken);
+                JobPaginator.chatState[message.Chat.Id] = (jobs, projectPath);
+                await JobPaginator.ShowJobsPage(botClient, message.Chat.Id, jobs, 0, projectPath, cancellationToken);
             }
         }
 
@@ -60,7 +60,7 @@ namespace TelegramBot.Commands
             }
             else
             {
-                await Paginator.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+                await JobPaginator.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
         }
 

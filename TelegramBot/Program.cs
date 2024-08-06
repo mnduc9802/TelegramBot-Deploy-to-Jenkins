@@ -22,10 +22,7 @@ namespace TelegramBot
             var receiverOptions = new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() };
             botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions);
 
-            Console.WriteLine("==========================================");
-            Console.WriteLine("    TELEGRAM DEPLOY BOT by mnduc9802   ");
             Console.WriteLine("Bot started. Press any key to exit.");
-            Console.WriteLine("==========================================");
             Console.ReadKey();
         }
 

@@ -21,13 +21,13 @@ namespace TelegramBot.Utilities.DeployUtilities
             var chatId = message.Chat.Id;
             var searchQuery = message.Text.ToLower();
 
-            if (Paginator.chatState.TryGetValue(chatId, out var state))
+            if (JobPaginator.chatState.TryGetValue(chatId, out var state))
             {
                 var matchingJobs = state.Jobs.Where(job => job.Name.ToLower().Contains(searchQuery)).ToList();
 
                 if (matchingJobs.Any())
                 {
-                    await Paginator.ShowJobsPage(botClient, chatId, matchingJobs, 0, state.ProjectPath, cancellationToken);
+                    await JobPaginator.ShowJobsPage(botClient, chatId, matchingJobs, 0, state.ProjectPath, cancellationToken);
                 }
                 else
                 {
