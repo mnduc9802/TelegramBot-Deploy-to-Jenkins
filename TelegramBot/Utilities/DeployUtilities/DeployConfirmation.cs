@@ -7,15 +7,15 @@ namespace TelegramBot.Utilities.DeployUtilities
 {
     public static class DeployConfirmation
     {
-        public static async Task DeployConfirmationKeyboard(ITelegramBotClient botClient, CallbackQuery callbackQuery, int projectIndex, CancellationToken cancellationToken)
+        public static async Task FolderDeployConfirmationKeyboard(ITelegramBotClient botClient, CallbackQuery callbackQuery, int projectIndex, CancellationToken cancellationToken)
         {
             var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
             var project = projects[projectIndex];
 
             var confirmationKeyboard = new InlineKeyboardMarkup(new[]
             {
-                InlineKeyboardButton.WithCallbackData("Yes", $"confirm_yes_{projectIndex}"),
-                InlineKeyboardButton.WithCallbackData("No", "confirm_no")
+                InlineKeyboardButton.WithCallbackData("Không", "confirm_folder_no"),
+                InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_folder_yes_{projectIndex}")
             });
 
             await botClient.EditMessageTextAsync(
@@ -26,9 +26,9 @@ namespace TelegramBot.Utilities.DeployUtilities
                 cancellationToken: cancellationToken);
         }
 
-        public static async Task HandleConfirmYesCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        public static async Task HandleConfirmFolderYesCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var projectIndex = int.Parse(callbackQuery.Data.Split('_')[2]);
+            var projectIndex = int.Parse(callbackQuery.Data.Split('_')[3]);
             var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
             var selectedProject = projects[projectIndex];
 
@@ -36,7 +36,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, selectedProject, cancellationToken);
         }
 
-        public static async Task HandleConfirmNoCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        public static async Task HandleConfirmFolderNoCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             await botClient.SendTextMessageAsync(
                 chatId: callbackQuery.Message.Chat.Id,
@@ -51,9 +51,9 @@ namespace TelegramBot.Utilities.DeployUtilities
         {
             var confirmationKeyboard = new InlineKeyboardMarkup(new[]
             {
-        InlineKeyboardButton.WithCallbackData("Yes", $"confirm_job_yes_{jobUrl}"),
-        InlineKeyboardButton.WithCallbackData("No", "confirm_job_no")
-    });
+                InlineKeyboardButton.WithCallbackData("Không", "confirm_folder_no"),
+                InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_folder_yes_{jobUrl}")
+            });
 
             string message = $"Bạn đã chọn job {jobUrl}. Bạn có muốn xác nhận triển khai không?";
 
