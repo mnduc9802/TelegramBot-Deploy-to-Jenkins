@@ -115,13 +115,13 @@ namespace TelegramBot
             {
                 await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
-            else if (data.StartsWith("confirm_folder_yes_"))
+            else if (data.StartsWith("confirm_yes_"))
             {
-                await DeployConfirmation.HandleConfirmFolderYesCallback(botClient, callbackQuery, cancellationToken);
+                await DeployConfirmation.HandleConfirmYesCallback(botClient, callbackQuery, cancellationToken);
             }
-            else if (data == "confirm_folder_no")
+            else if (data == "confirm_no")
             {
-                await DeployConfirmation.HandleConfirmFolderNoCallback(botClient, callbackQuery, cancellationToken);
+                await DeployConfirmation.HandleConfirmNoCallback(botClient, callbackQuery, cancellationToken);
             }
             else if (data.StartsWith("confirm_job_yes_"))
             {
@@ -150,7 +150,7 @@ namespace TelegramBot
             var data = callbackQuery.Data.Substring(7);
             if (int.TryParse(data, out int projectIndex))
             {
-                await DeployConfirmation.FolderDeployConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
+                await DeployConfirmation.DeployConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
             }
             else
             {
