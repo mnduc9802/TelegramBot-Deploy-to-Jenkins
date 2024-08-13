@@ -16,12 +16,17 @@ namespace TelegramBot
 
         public static async Task Main()
         {
-            botClient = new TelegramBotClient("7463243734:AAEXs6bid2YewLvCx6iMxzEqRgW2UweCZX4");
-            await MenuCommand.SetBotCommandsAsync(botClient);
+            string botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+            if (string.IsNullOrEmpty(botToken))
+            {
+                Console.WriteLine("Bot token not found in environment variables. Please set TELEGRAM_BOT_TOKEN.");
+                return;
+            }
 
+            botClient = new TelegramBotClient(botToken);
+            await MenuCommand.SetBotCommandsAsync(botClient);
             var receiverOptions = new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() };
             botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions);
-
             Console.WriteLine("Bot started. Press any key to exit.");
             Console.ReadKey();
         }
