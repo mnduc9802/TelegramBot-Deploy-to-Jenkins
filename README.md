@@ -2,7 +2,7 @@
 
 ## :warning: QUAN TRỌNG
 
-ĐẶT BIẾN MÔI TRƯỜNG TRONG HỆ ĐIỀU TRƯỚC KHI CHẠY CODE
+ĐẶT BIẾN MÔI TRƯỜNG SYSTEM ENVIRONMENT TRONG HỆ ĐIỀU TRƯỚC KHI CHẠY CODE
 
 ## Giới thiệu
 
