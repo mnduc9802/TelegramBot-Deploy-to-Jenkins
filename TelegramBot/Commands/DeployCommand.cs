@@ -12,8 +12,8 @@ namespace TelegramBot.Commands
     public class DeployCommand
     {
         private const string JENKINS_URL = "https://jenkins.eztek.net";
-        private const string JENKINS_USERNAME = "bot";
-        private const string JENKINS_PASSWORD = "1qazxsw2!@";
+        private const string JENKINS_USERNAME = "*******";
+        private const string JENKINS_PASSWORD = "*******";
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
