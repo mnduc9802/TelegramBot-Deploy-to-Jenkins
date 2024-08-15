@@ -1,5 +1,9 @@
 # Telegram Deploy Bot by mnduc9802
 
+## :warning: QUAN TRỌNG
+
+ĐẶT BIẾN MÔI TRƯỜNG SYSTEM ENVIRONMENT TRONG HỆ ĐIỀU TRƯỚC KHI CHẠY CODE
+
 ## Giới thiệu
 
 Bot Telegram này được thiết kế để hỗ trợ triển khai các dự án từ Jenkins. Bot cung cấp một số lệnh để người dùng có thể tương tác và thực hiện các hoạt động như triển khai dự án, xem trạng thái, gửi phản hồi, và nhiều hơn nữa.
