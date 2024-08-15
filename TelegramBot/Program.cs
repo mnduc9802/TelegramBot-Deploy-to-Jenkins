@@ -6,6 +6,7 @@ using Telegram.Bot;
 using TelegramBot.Commands;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Utilities.DeployUtilities;
+using TelegramBot.Utilities;
 
 namespace TelegramBot
 {
@@ -144,6 +145,17 @@ namespace TelegramBot
             else if (data == "search")
             {
                 await JobFinder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
+            }
+            if (data == "back_to_jobs")
+            {
+                if (JobPaginator.chatState.TryGetValue(chatId, out var state))
+                {
+                    await JobPaginator.ShowJobsPage(botClient, chatId, state.Jobs, 0, state.ProjectPath, cancellationToken);
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(chatId, "Không thể tìm thấy thông tin trạng thái. Vui lòng thử lại từ đầu.", cancellationToken: cancellationToken);
+                }
             }
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);

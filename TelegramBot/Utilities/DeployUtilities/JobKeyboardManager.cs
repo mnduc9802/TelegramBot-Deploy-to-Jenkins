@@ -7,7 +7,7 @@ namespace TelegramBot.Utilities.DeployUtilities
     {
         public static Dictionary<string, string> jobUrlMap = new Dictionary<string, string>();
 
-        public static InlineKeyboardMarkup CreateJobKeyboard(List<JobInfo> jobs, int currentPage, int totalPages)
+        public static InlineKeyboardMarkup CreateJobKeyboard(List<JobInfo> jobs, int currentPage, int totalPages, bool includeBackButton = false)
         {
             var keyboardButtons = new List<List<InlineKeyboardButton>>();
 
@@ -19,20 +19,28 @@ namespace TelegramBot.Utilities.DeployUtilities
                 keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData(job.Name, $"deploy_{shortId}") });
             }
 
-            // Navigation and Search buttons on the same row
-            var navigationAndSearchButtons = new List<InlineKeyboardButton>();
+            // Navigation, Search, and Back buttons on the same row
+            var navigationSearchAndBackButtons = new List<InlineKeyboardButton>();
             if (currentPage > 0)
             {
-                navigationAndSearchButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"page_{currentPage - 1}"));
+                navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"page_{currentPage - 1}"));
             }
-            navigationAndSearchButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search"));
+            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search"));
             if (currentPage < totalPages - 1)
             {
-                navigationAndSearchButtons.Add(InlineKeyboardButton.WithCallbackData("➡️", $"page_{currentPage + 1}"));
+                navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("➡️", $"page_{currentPage + 1}"));
             }
-            keyboardButtons.Add(navigationAndSearchButtons);
+
+            // Add Back button if needed
+            if (includeBackButton)
+            {
+                navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("↩️", "back_to_jobs"));
+            }
+
+            keyboardButtons.Add(navigationSearchAndBackButtons);
 
             return new InlineKeyboardMarkup(keyboardButtons);
         }
+
     }
 }
