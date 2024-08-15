@@ -146,7 +146,11 @@ namespace TelegramBot
             {
                 await JobFinder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
             }
-            if (data == "back_to_jobs")
+            else if (data == "back_to_folder")
+            {
+                await ShowProjectsKeyboard(chatId, cancellationToken);
+            }
+            else if (data == "back_to_jobs")
             {
                 if (JobPaginator.chatState.TryGetValue(chatId, out var state))
                 {
@@ -157,6 +161,7 @@ namespace TelegramBot
                     await botClient.SendTextMessageAsync(chatId, "Không thể tìm thấy thông tin trạng thái. Vui lòng thử lại từ đầu.", cancellationToken: cancellationToken);
                 }
             }
+
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
             await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);

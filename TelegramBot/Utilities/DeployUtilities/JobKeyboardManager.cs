@@ -7,7 +7,7 @@ namespace TelegramBot.Utilities.DeployUtilities
     {
         public static Dictionary<string, string> jobUrlMap = new Dictionary<string, string>();
 
-        public static InlineKeyboardMarkup CreateJobKeyboard(List<JobInfo> jobs, int currentPage, int totalPages, bool includeBackButton = false)
+        public static InlineKeyboardMarkup CreateJobKeyboard(List<JobInfo> jobs, int currentPage, int totalPages, bool includeBackToFolderButton = false, bool includeBackButton = false)
         {
             var keyboardButtons = new List<List<InlineKeyboardButton>>();
 
@@ -26,6 +26,7 @@ namespace TelegramBot.Utilities.DeployUtilities
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"page_{currentPage - 1}"));
             }
             navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search"));
+            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("↩️", "back_to_folder"));
             if (currentPage < totalPages - 1)
             {
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("➡️", $"page_{currentPage + 1}"));
@@ -36,7 +37,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             {
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("↩️", "back_to_jobs"));
             }
-
+            
             keyboardButtons.Add(navigationSearchAndBackButtons);
 
             return new InlineKeyboardMarkup(keyboardButtons);

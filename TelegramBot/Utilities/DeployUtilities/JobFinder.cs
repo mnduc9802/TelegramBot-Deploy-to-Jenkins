@@ -28,12 +28,7 @@ namespace TelegramBot.Utilities.DeployUtilities
                 if (matchingJobs.Any())
                 {
                     var keyboard = JobKeyboardManager.CreateJobKeyboard(matchingJobs, 0, 1, includeBackButton: true);
-                    await botClient.SendTextMessageAsync(
-                        chatId,
-                        "Kết quả tìm kiếm:",
-                        replyMarkup: keyboard,
-                        cancellationToken: cancellationToken
-                    );
+                    await botClient.SendTextMessageAsync(chatId, "Kết quả tìm kiếm:", replyMarkup: keyboard, cancellationToken: cancellationToken);
                 }
                 else
                 {
