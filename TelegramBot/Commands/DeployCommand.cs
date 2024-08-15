@@ -17,24 +17,48 @@ namespace TelegramBot.Commands
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
-            await botClient.SendTextMessageAsync(message.Chat.Id, $"Đang chuẩn bị triển khai {projectPath}...", cancellationToken: cancellationToken);
+            var initialMessage = await botClient.SendTextMessageAsync(
+                message.Chat.Id,
+                $"Đang chuẩn bị triển khai {projectPath}...",
+                cancellationToken: cancellationToken
+            );
 
             var jobs = await GetDeployableJobsAsync(projectPath);
 
             if (jobs.Count == 0)
             {
-                await botClient.SendTextMessageAsync(message.Chat.Id, $"Không tìm thấy job có thể triển khai trong {projectPath}.", cancellationToken: cancellationToken);
+                await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
+                await botClient.SendTextMessageAsync(
+                    message.Chat.Id,
+                    $"Không tìm thấy job có thể triển khai trong {projectPath}.",
+                    cancellationToken: cancellationToken
+                );
             }
             else if (jobs.Count == 1)
             {
-                await DeployConfirmation.JobDeployConfirmationKeyboard(botClient, message.Chat.Id, jobs[0].Url, cancellationToken);
+                await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
+                await DeployConfirmation.JobDeployConfirmationKeyboard(
+                    botClient,
+                    message.Chat.Id,
+                    jobs[0].Url,
+                    cancellationToken
+                );
             }
             else
             {
+                await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
                 JobPaginator.chatState[message.Chat.Id] = (jobs, projectPath);
-                await JobPaginator.ShowJobsPage(botClient, message.Chat.Id, jobs, 0, projectPath, cancellationToken);
+                await JobPaginator.ShowJobsPage(
+                    botClient,
+                    message.Chat.Id,
+                    jobs,
+                    0,
+                    projectPath,
+                    cancellationToken
+                );
             }
         }
+
 
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {

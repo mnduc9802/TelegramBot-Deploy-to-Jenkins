@@ -111,6 +111,7 @@ namespace TelegramBot
         private static async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var chatId = callbackQuery.Message.Chat.Id;
+            var messageId = callbackQuery.Message.MessageId;
             var data = callbackQuery.Data;
 
             if (data.StartsWith("deploy_"))
@@ -149,6 +150,7 @@ namespace TelegramBot
             else if (data == "back_to_folder")
             {
                 await ShowProjectsKeyboard(chatId, cancellationToken);
+                await botClient.DeleteMessageAsync(chatId, messageId, cancellationToken);
             }
             else if (data == "back_to_jobs")
             {
@@ -160,6 +162,7 @@ namespace TelegramBot
                 {
                     await botClient.SendTextMessageAsync(chatId, "Không thể tìm thấy thông tin trạng thái. Vui lòng thử lại từ đầu.", cancellationToken: cancellationToken);
                 }
+                await botClient.DeleteMessageAsync(chatId, messageId, cancellationToken);
             }
 
 
@@ -180,13 +183,14 @@ namespace TelegramBot
             }
         }
 
-        private static async Task ShowProjectsKeyboard(long chatId, CancellationToken cancellationToken)
+        private static async Task<int> ShowProjectsKeyboard(long chatId, CancellationToken cancellationToken)
         {
             var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
             var projectButtons = projects.Select((p, i) => new[] { InlineKeyboardButton.WithCallbackData(p, $"deploy_{i}") }).ToList();
             var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
 
-            await botClient.SendTextMessageAsync(chatId, "Danh sách các dự án hiện tại:", replyMarkup: projectKeyboard, cancellationToken: cancellationToken);
+            var sentMessage = await botClient.SendTextMessageAsync(chatId, "Danh sách các dự án hiện tại:", replyMarkup: projectKeyboard, cancellationToken: cancellationToken);
+            return sentMessage.MessageId;
         }
 
         private static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
