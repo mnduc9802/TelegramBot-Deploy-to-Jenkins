@@ -22,22 +22,11 @@ namespace TelegramBot.Utilities
 
             if (messageId.HasValue)
             {
-                await botClient.EditMessageTextAsync(
-                    chatId,
-                    messageId.Value,
-                    message,
-                    replyMarkup: jobKeyboard,
-                    cancellationToken: cancellationToken
-                );
+                await botClient.EditMessageTextAsync(chatId, messageId.Value, message, replyMarkup: jobKeyboard, cancellationToken: cancellationToken);
             }
             else
             {
-                await botClient.SendTextMessageAsync(
-                    chatId,
-                    message,
-                    replyMarkup: jobKeyboard,
-                    cancellationToken: cancellationToken
-                );
+                await botClient.SendTextMessageAsync(chatId, message, replyMarkup: jobKeyboard, cancellationToken: cancellationToken);
             }
         }
 

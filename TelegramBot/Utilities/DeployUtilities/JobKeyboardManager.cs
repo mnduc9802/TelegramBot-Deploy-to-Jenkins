@@ -26,7 +26,7 @@ namespace TelegramBot.Utilities.DeployUtilities
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"page_{currentPage - 1}"));
             }
             navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search"));
-            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("↩️", "back_to_folder"));
+            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("📁", "back_to_folder"));
             if (currentPage < totalPages - 1)
             {
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("➡️", $"page_{currentPage + 1}"));
@@ -35,7 +35,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             // Add Back button if needed
             if (includeBackButton)
             {
-                navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("↩️", "back_to_jobs"));
+                navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("📄", "back_to_jobs"));
             }
             
             keyboardButtons.Add(navigationSearchAndBackButtons);
