@@ -2,9 +2,9 @@
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace TelegramBot.Utilities.DeployUtilities
+namespace TelegramBot.Utilities
 {
-    public static class JobFinder
+    public static class FolderFinder
     {
         private static Dictionary<long, int> lastMessageIds = new Dictionary<long, int>();
 
@@ -16,7 +16,7 @@ namespace TelegramBot.Utilities.DeployUtilities
 
             var sentMessage = await botClient.SendTextMessageAsync(
                 chatId,
-                "Vui lòng nhập tên job bạn muốn tìm kiếm:",
+                "Vui lòng nhập tên thư mục bạn muốn tìm kiếm:",
                 replyMarkup: new ForceReplyMarkup { Selective = true },
                 cancellationToken: cancellationToken
             );
@@ -28,7 +28,7 @@ namespace TelegramBot.Utilities.DeployUtilities
         {
             var chatId = message.Chat.Id;
 
-            if (message.ReplyToMessage?.Text == "Vui lòng nhập tên job bạn muốn tìm kiếm:")
+            if (message.ReplyToMessage?.Text == "Vui lòng nhập tên thư mục bạn muốn tìm kiếm:")
             {
                 var searchQuery = message.Text.ToLower();
 
@@ -40,18 +40,18 @@ namespace TelegramBot.Utilities.DeployUtilities
 
                 await botClient.DeleteMessageAsync(chatId, message.MessageId, cancellationToken);
 
-                if (JobPaginator.chatState.TryGetValue(chatId, out var state))
+                if (FolderPaginator.chatState.TryGetValue(chatId, out var folders))
                 {
-                    var matchingJobs = state.Jobs.Where(job => job.Name.ToLower().Contains(searchQuery)).ToList();
+                    var matchingFolders = folders.Where(folder => folder.ToLower().Contains(searchQuery)).ToList();
 
-                    if (matchingJobs.Any())
+                    if (matchingFolders.Any())
                     {
-                        var keyboard = JobKeyboardManager.CreateJobKeyboard(matchingJobs, 0, 1, includeBackButton: true);
+                        var keyboard = FolderKeyboardManager.CreateFolderKeyboard(matchingFolders, 0, 1);
                         await botClient.SendTextMessageAsync(chatId, $"Kết quả tìm kiếm cho '{searchQuery}':", replyMarkup: keyboard, cancellationToken: cancellationToken);
                     }
                     else
                     {
-                        await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy job nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
+                        await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy thư mục nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
                     }
                 }
                 else

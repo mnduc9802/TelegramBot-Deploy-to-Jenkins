@@ -57,18 +57,15 @@ namespace TelegramBot
 
             if (commandParts.Length == 2 && commandParts[1].Equals(botUsername, StringComparison.OrdinalIgnoreCase))
             {
-                text = commandParts[0]; 
+                text = commandParts[0];
             }
             else if (message.Chat.Type != ChatType.Private && !text.Contains("@" + botUsername))
             {
                 return;
             }
 
-            if (message.ReplyToMessage?.Text == "Vui lòng nhập tên job bạn muốn tìm kiếm:")
-            {
-                await JobFinder.HandleSearchQuery(botClient, message, cancellationToken);
-                return;
-            }
+            await FolderFinder.HandleSearchQuery(botClient, message, cancellationToken);
+            await JobFinder.HandleSearchQuery(botClient, message, cancellationToken);
 
             if (feedbackState.TryGetValue(chatId, out bool isFeedback) && isFeedback)
             {
@@ -143,6 +140,26 @@ namespace TelegramBot
                 await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
             }
+
+            //Folder
+            else if (data.StartsWith("folderpage_"))
+            {
+                await FolderPaginator.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+            }
+            else if (data == "foldersearch")
+            {
+                await FolderFinder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
+            }
+            else if (data.StartsWith("folder_"))
+            {
+                var folderId = data.Substring(7);
+                if (FolderKeyboardManager.folderPathMap.TryGetValue(folderId, out string folderPath))
+                {
+                    await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, folderPath, cancellationToken);
+                }
+            }
+
+            //Job
             else if (data == "search")
             {
                 await JobFinder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
@@ -183,14 +200,11 @@ namespace TelegramBot
             }
         }
 
-        private static async Task<int> ShowProjectsKeyboard(long chatId, CancellationToken cancellationToken)
+        private static async Task ShowProjectsKeyboard(long chatId, CancellationToken cancellationToken)
         {
             var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
-            var projectButtons = projects.Select((p, i) => new[] { InlineKeyboardButton.WithCallbackData(p, $"deploy_{i}") }).ToList();
-            var projectKeyboard = new InlineKeyboardMarkup(projectButtons);
-
-            var sentMessage = await botClient.SendTextMessageAsync(chatId, "Danh sách các dự án hiện tại:", replyMarkup: projectKeyboard, cancellationToken: cancellationToken);
-            return sentMessage.MessageId;
+            FolderPaginator.chatState[chatId] = projects;
+            await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
         }
 
         private static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
