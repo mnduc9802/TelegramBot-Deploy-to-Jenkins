@@ -4,9 +4,9 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Commands;
-using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Utilities.DeployUtilities;
 using TelegramBot.Utilities;
+using dotenv.net;
 
 namespace TelegramBot
 {
@@ -17,10 +17,11 @@ namespace TelegramBot
 
         public static async Task Main()
         {
-            string botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+            var envVars = DotEnv.Read(options: new DotEnvOptions(probeForEnv: true));
+            string botToken = envVars["TELEGRAM_BOT_TOKEN"];
             if (string.IsNullOrEmpty(botToken))
             {
-                Console.WriteLine("Bot token not found in environment variables. Please set TELEGRAM_BOT_TOKEN.");
+                Console.WriteLine("Bot token not found in .env file. Please set TELEGRAM_BOT_TOKEN in the .env file.");
                 return;
             }
 

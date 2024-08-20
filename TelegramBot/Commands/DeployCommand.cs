@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
+using dotenv.net;
 using Newtonsoft.Json.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -11,9 +12,21 @@ namespace TelegramBot.Commands
 {
     public class DeployCommand
     {
-        private const string JENKINS_URL = "https://jenkins.eztek.net";
-        private const string JENKINS_USERNAME = "*******";
-        private const string JENKINS_PASSWORD = "*******";
+        private static readonly string JENKINS_URL;
+        private static readonly string JENKINS_USERNAME;
+        private static readonly string JENKINS_PASSWORD;
+
+        static DeployCommand()
+        {
+            DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+            JENKINS_URL = Environment.GetEnvironmentVariable("JENKINS_URL");
+            JENKINS_USERNAME = Environment.GetEnvironmentVariable("JENKINS_USERNAME");
+            JENKINS_PASSWORD = Environment.GetEnvironmentVariable("JENKINS_PASSWORD");
+
+            Console.WriteLine($"JENKINS_URL: {JENKINS_URL}");
+            Console.WriteLine($"JENKINS_USERNAME: {JENKINS_USERNAME}");
+            Console.WriteLine($"JENKINS_PASSWORD: {JENKINS_PASSWORD}");
+        }
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
