@@ -19,10 +19,6 @@ namespace TelegramBot.Commands
             JENKINS_URL = Environment.GetEnvironmentVariable("JENKINS_URL");
             JENKINS_USERNAME = Environment.GetEnvironmentVariable("JENKINS_USERNAME");
             JENKINS_PASSWORD = Environment.GetEnvironmentVariable("JENKINS_PASSWORD");
-
-            Console.WriteLine($"JENKINS_URL: {JENKINS_URL}");
-            Console.WriteLine($"JENKINS_USERNAME: {JENKINS_USERNAME}");
-            Console.WriteLine($"JENKINS_PASSWORD: {JENKINS_PASSWORD}");
         }
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
