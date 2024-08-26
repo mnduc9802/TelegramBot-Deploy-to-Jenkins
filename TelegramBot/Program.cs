@@ -24,12 +24,6 @@ namespace TelegramBot
             string botToken = envVars["TELEGRAM_BOT_TOKEN"];
             string connectionString = envVars["DATABASE_CONNECTION_STRING"];
 
-            if (string.IsNullOrEmpty(botToken))
-            {
-                Console.WriteLine("Bot token not found in .env file. Please set TELEGRAM_BOT_TOKEN in the .env file.");
-                return;
-            }
-
             botClient = new TelegramBotClient(botToken);
             await MenuCommand.SetBotCommandsAsync(botClient);
             var receiverOptions = new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() };
