@@ -8,6 +8,7 @@ using TelegramBot.Utilities.DeployUtilities;
 using TelegramBot.Utilities;
 using dotenv.net;
 using System.Collections.Concurrent;
+using Npgsql;
 
 namespace TelegramBot
 {
@@ -21,6 +22,8 @@ namespace TelegramBot
         {
             var envVars = DotEnv.Read(options: new DotEnvOptions(probeForEnv: true));
             string botToken = envVars["TELEGRAM_BOT_TOKEN"];
+            string connectionString = envVars["DATABASE_CONNECTION_STRING"];
+
             if (string.IsNullOrEmpty(botToken))
             {
                 Console.WriteLine("Bot token not found in .env file. Please set TELEGRAM_BOT_TOKEN in the .env file.");
