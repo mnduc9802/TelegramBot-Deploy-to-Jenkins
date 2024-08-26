@@ -68,7 +68,6 @@ namespace TelegramBot.Commands
             }
         }
 
-
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var chatId = callbackQuery.Message.Chat.Id;
@@ -183,6 +182,57 @@ namespace TelegramBot.Commands
             {
                 Console.WriteLine($"Deployment failed: {ex.Message}");
                 return false;
+            }
+        }
+
+        public static async Task HandleScheduleJobAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var jobUrl = callbackQuery.Data.Replace("schedule_job_", "");
+            await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
+            await RequestScheduleTimeAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, cancellationToken);
+        }
+
+        private static async Task RequestScheduleTimeAsync(ITelegramBotClient botClient, long chatId, string jobUrl, CancellationToken cancellationToken)
+        {
+            await botClient.SendTextMessageAsync(
+                chatId,
+                "Vui lòng nhập thời gian bạn muốn lên lịch triển khai job (định dạng: DD/MM/YYYY HH:mm)",
+                cancellationToken: cancellationToken);
+
+            // Lưu trạng thái đang chờ nhập thời gian lên lịch
+            Program.schedulingState[chatId] = jobUrl;
+        }
+
+        public static async Task HandleScheduleTimeInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
+        {
+            if (DateTime.TryParseExact(message.Text, "dd/MM/yyyy HH:mm", null, System.Globalization.DateTimeStyles.None, out DateTime scheduledTime))
+            {
+                if (scheduledTime <= DateTime.Now)
+                {
+                    await botClient.SendTextMessageAsync(
+                        message.Chat.Id,
+                        "Thời gian lên lịch phải là trong tương lai. Vui lòng thử lại.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                string jobUrl = Program.schedulingState[message.Chat.Id];
+                string jobId = ScheduledJobManager.ScheduleJob(jobUrl, scheduledTime);
+
+                await botClient.SendTextMessageAsync(
+                    message.Chat.Id,
+                    $"Đã lên lịch triển khai job {jobUrl} vào lúc {scheduledTime.ToString("dd/MM/yyyy HH:mm")}.",
+                    cancellationToken: cancellationToken);
+
+                // Xóa trạng thái đang chờ nhập thời gian lên lịch
+                Program.schedulingState.TryRemove(message.Chat.Id, out _);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Định dạng thời gian không hợp lệ. Vui lòng nhập lại theo định dạng DD/MM/YYYY HH:mm",
+                    cancellationToken: cancellationToken);
             }
         }
 

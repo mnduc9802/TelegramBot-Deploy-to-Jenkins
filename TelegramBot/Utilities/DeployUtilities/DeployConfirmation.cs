@@ -51,11 +51,18 @@ namespace TelegramBot.Utilities.DeployUtilities
         {
             var confirmationKeyboard = new InlineKeyboardMarkup(new[]
             {
-                InlineKeyboardButton.WithCallbackData("Không", "confirm_job_no"),
-                InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_job_yes_{jobUrl}")
+                new []
+                {
+                    InlineKeyboardButton.WithCallbackData("Không", "confirm_job_no"),
+                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_job_yes_{jobUrl}")
+                },
+                new []
+                {
+                    InlineKeyboardButton.WithCallbackData("Lên lịch", $"schedule_job_{jobUrl}")
+                }
             });
 
-            string message = $"Bạn đã chọn job {jobUrl}. Bạn có muốn xác nhận triển khai không?";
+            string message = $"Bạn đã chọn job {jobUrl}. Bạn muốn thực hiện hành động nào?";
 
             if (messageId.HasValue)
             {

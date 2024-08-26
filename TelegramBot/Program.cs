@@ -7,6 +7,7 @@ using TelegramBot.Commands;
 using TelegramBot.Utilities.DeployUtilities;
 using TelegramBot.Utilities;
 using dotenv.net;
+using System.Collections.Concurrent;
 
 namespace TelegramBot
 {
@@ -14,6 +15,7 @@ namespace TelegramBot
     {
         public static ITelegramBotClient botClient;
         public static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
+        public static ConcurrentDictionary<long, string> schedulingState = new ConcurrentDictionary<long, string>();
 
         public static async Task Main()
         {
@@ -29,6 +31,9 @@ namespace TelegramBot
             await MenuCommand.SetBotCommandsAsync(botClient);
             var receiverOptions = new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() };
             botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions);
+
+            ScheduledJobManager.Initialize();
+
             Console.WriteLine("Bot started. Press any key to exit.");
             Console.ReadKey();
         }
@@ -72,6 +77,12 @@ namespace TelegramBot
             {
                 feedbackState[chatId] = false;
                 await FeedbackCommand.HandleFeedbackResponseAsync(botClient, message, cancellationToken);
+                return;
+            }
+
+            if (schedulingState.TryGetValue(message.Chat.Id, out _))
+            {
+                await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
                 return;
             }
 
@@ -120,26 +131,15 @@ namespace TelegramBot
             {
                 await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
-            else if (data.StartsWith("confirm_yes_"))
-            {
-                await DeployConfirmation.HandleConfirmYesCallback(botClient, callbackQuery, cancellationToken);
-            }
-            else if (data == "confirm_no")
-            {
-                await DeployConfirmation.HandleConfirmNoCallback(botClient, callbackQuery, cancellationToken);
-            }
-            else if (data.StartsWith("confirm_job_yes_"))
-            {
-                await DeployConfirmation.HandleConfirmJobYesCallback(botClient, callbackQuery, cancellationToken);
-            }
-            else if (data == "confirm_job_no")
-            {
-                await DeployConfirmation.HandleConfirmJobNoCallback(botClient, callbackQuery, cancellationToken);
-            }
             else if (data == "start_again")
             {
                 await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
+            }
+
+            else if (data.StartsWith("schedule_job_"))
+            {
+                await DeployCommand.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
             }
 
             //Folder
@@ -183,6 +183,23 @@ namespace TelegramBot
                 await botClient.DeleteMessageAsync(chatId, messageId, cancellationToken);
             }
 
+            //Confirmation Folder/Job
+            else if (data.StartsWith("confirm_yes_"))
+            {
+                await DeployConfirmation.HandleConfirmYesCallback(botClient, callbackQuery, cancellationToken);
+            }
+            else if (data == "confirm_no")
+            {
+                await DeployConfirmation.HandleConfirmNoCallback(botClient, callbackQuery, cancellationToken);
+            }
+            else if (data.StartsWith("confirm_job_yes_"))
+            {
+                await DeployConfirmation.HandleConfirmJobYesCallback(botClient, callbackQuery, cancellationToken);
+            }
+            else if (data == "confirm_job_no")
+            {
+                await DeployConfirmation.HandleConfirmJobNoCallback(botClient, callbackQuery, cancellationToken);
+            }
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, cancellationToken: cancellationToken);
             await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);
