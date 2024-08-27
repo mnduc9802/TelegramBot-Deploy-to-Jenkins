@@ -5,10 +5,16 @@
 1. API CỦA BOT ĐƯỢC TẠO RA BỞI @BOTFATHER
 2. TẠO FILE .env TRONG THƯ MỤC CHỨA FILE Program.cs ĐỂ TẠO BIẾN MÔI TRƯỜNG VỚI CẤU TRÚC SAU:
 ```
+//Telegram API
 TELEGRAM_BOT_TOKEN=*******
+
+//Jenkins Info
 JENKINS_URL=*******
 JENKINS_USERNAME=*******
 JENKINS_PASSWORD=******
+
+//Database Info
+DATABASE_CONNECTION_STRING=*******
 ```
 ---
 
