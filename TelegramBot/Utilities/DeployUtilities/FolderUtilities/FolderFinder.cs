@@ -16,7 +16,7 @@ namespace TelegramBot.Utilities
 
             var sentMessage = await botClient.SendTextMessageAsync(
                 chatId,
-                "Vui lòng nhập tên thư mục bạn muốn tìm kiếm:",
+                "Vui lòng nhập tên dự án bạn muốn tìm kiếm:",
                 replyMarkup: new ForceReplyMarkup { Selective = true },
                 cancellationToken: cancellationToken
             );
@@ -28,7 +28,7 @@ namespace TelegramBot.Utilities
         {
             var chatId = message.Chat.Id;
 
-            if (message.ReplyToMessage?.Text == "Vui lòng nhập tên thư mục bạn muốn tìm kiếm:")
+            if (message.ReplyToMessage?.Text == "Vui lòng nhập tên dự án bạn muốn tìm kiếm:")
             {
                 var searchQuery = message.Text.ToLower();
 
@@ -51,7 +51,7 @@ namespace TelegramBot.Utilities
                     }
                     else
                     {
-                        await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy thư mục nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
+                        await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy dự án nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
                     }
                 }
                 else

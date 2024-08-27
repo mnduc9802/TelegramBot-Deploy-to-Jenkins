@@ -132,7 +132,7 @@ namespace TelegramBot
             }
             else if (data == "start_again")
             {
-                await StartCommand.ExecuteAsync(botClient, callbackQuery.Message, cancellationToken);
+                await HandleDeployCallback(callbackQuery, cancellationToken);
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
             }
 
@@ -156,6 +156,7 @@ namespace TelegramBot
                 if (FolderKeyboardManager.folderPathMap.TryGetValue(folderId, out string folderPath))
                 {
                     await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, folderPath, cancellationToken);
+                    await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
                 }
             }
 
