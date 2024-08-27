@@ -1,9 +1,11 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Data;
+using System.Net.Http.Headers;
 using System.Text;
 using dotenv.net;
 using Newtonsoft.Json.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using TelegramBot.DbContext;
 using TelegramBot.Models;
 using TelegramBot.Utilities;
 using TelegramBot.Utilities.DeployUtilities;
@@ -160,8 +162,8 @@ namespace TelegramBot.Commands
                 var crumbJson = JObject.Parse(await crumbResponse.Content.ReadAsStringAsync());
                 client.DefaultRequestHeaders.Add(crumbJson["crumbRequestField"].ToString(), crumbJson["crumb"].ToString());
 
-                var normalizedProjectPath = NormalizeJenkinsPath(projectPath);
-                var url = $"/job/{normalizedProjectPath}/build";
+                // Sửa đổi cách xử lý đường dẫn
+                var url = $"/job/{projectPath.Replace("/", "/")}/build";
                 Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
 
                 var response = await client.PostAsync(url, null);
@@ -185,11 +187,44 @@ namespace TelegramBot.Commands
             }
         }
 
+        private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()
+        {
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            var sql = "SELECT job_name, scheduled_time, created_at FROM scheduled_jobs ORDER BY scheduled_time";
+            var dataTable = await dbConnection.ExecuteReaderAsync(sql);
+
+            var scheduledJobs = new List<ScheduledJob>();
+            foreach (DataRow row in dataTable.Rows)
+            {
+                scheduledJobs.Add(new ScheduledJob
+                {
+                    JobName = row["job_name"].ToString(),
+                    ScheduledTime = Convert.ToDateTime(row["scheduled_time"]),
+                    CreatedAt = Convert.ToDateTime(row["created_at"])
+                });
+            }
+
+            return scheduledJobs;
+        }
+
         public static async Task HandleScheduleJobAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var jobUrl = callbackQuery.Data.Replace("schedule_job_", "");
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
-            await RequestScheduleTimeAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, cancellationToken);
+
+            // Lấy danh sách các job đã được lên lịch
+            var scheduledJobs = await GetScheduledJobsAsync();
+            var jobList = string.Join("\n", scheduledJobs.Select(j => $"{j.JobName} - {j.ScheduledTime:dd/MM/yyyy HH:mm}"));
+
+            var message = $"Các job đang được lên lịch:\n\n{jobList}\n\nVui lòng nhập thời gian bạn muốn lên lịch triển khai job (định dạng: DD/MM/YYYY HH:mm)";
+
+            await botClient.SendTextMessageAsync(
+                callbackQuery.Message.Chat.Id,
+                message,
+                cancellationToken: cancellationToken);
+
+            // Lưu trạng thái đang chờ nhập thời gian lên lịch
+            Program.schedulingState[callbackQuery.Message.Chat.Id] = jobUrl;
         }
 
         private static async Task RequestScheduleTimeAsync(ITelegramBotClient botClient, long chatId, string jobUrl, CancellationToken cancellationToken)
@@ -217,11 +252,25 @@ namespace TelegramBot.Commands
                 }
 
                 string jobUrl = Program.schedulingState[message.Chat.Id];
-                string jobId = ScheduledJobManager.ScheduleJob(jobUrl, scheduledTime);
+                // Thay đổi cách lấy jobName
+                string jobName = jobUrl.TrimEnd('/');
+
+                // Lưu job vào database
+                var dbConnection = new DatabaseConnection(Program.connectionString);
+                var sql = "INSERT INTO scheduled_jobs (job_name, scheduled_time, created_at) VALUES (@jobName, @scheduledTime, @createdAt)";
+                var parameters = new Dictionary<string, object>
+                {
+                    { "@jobName", jobName },
+                    { "@scheduledTime", scheduledTime },
+                    { "@createdAt", DateTime.Now }
+                };
+                await dbConnection.ExecuteNonQueryAsync(sql, parameters);
+
+                Console.WriteLine($"Scheduled job {jobName} for {scheduledTime}"); // Log để debug
 
                 await botClient.SendTextMessageAsync(
                     message.Chat.Id,
-                    $"Đã lên lịch triển khai job {jobUrl} vào lúc {scheduledTime.ToString("dd/MM/yyyy HH:mm")}.",
+                    $"Đã lên lịch triển khai job {jobName} vào lúc {scheduledTime:dd/MM/yyyy HH:mm}.",
                     cancellationToken: cancellationToken);
 
                 // Xóa trạng thái đang chờ nhập thời gian lên lịch
@@ -238,7 +287,7 @@ namespace TelegramBot.Commands
 
         private static string NormalizeJenkinsPath(string projectPath)
         {
-            return string.Join("/job/", projectPath.Split(new[] { "/job/" }, StringSplitOptions.RemoveEmptyEntries));
+            return string.Join("/job/", projectPath.Split(new[] { "job/" }, StringSplitOptions.RemoveEmptyEntries));
         }
 
         public static async Task SendDeployResultAsync(ITelegramBotClient botClient, long chatId, string project, bool success, CancellationToken cancellationToken)

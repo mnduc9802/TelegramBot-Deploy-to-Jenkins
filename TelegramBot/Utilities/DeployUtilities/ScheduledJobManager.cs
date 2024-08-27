@@ -1,41 +1,69 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Data;
 using TelegramBot.Commands;
+using TelegramBot.DbContext;
+using TelegramBot;
 
 namespace TelegramBot.Utilities
 {
     public class ScheduledJobManager
     {
-        private static ConcurrentDictionary<string, (DateTime ScheduledTime, string JobUrl)> scheduledJobs = new ConcurrentDictionary<string, (DateTime, string)>();
         private static Timer timer;
 
         public static void Initialize()
         {
+            // Kiểm tra job mỗi phút
             timer = new Timer(CheckScheduledJobs, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
-        }
-
-        public static string ScheduleJob(string jobUrl, DateTime scheduledTime)
-        {
-            string jobId = Guid.NewGuid().ToString();
-            scheduledJobs[jobId] = (scheduledTime, jobUrl);
-            return jobId;
         }
 
         private static async void CheckScheduledJobs(object state)
         {
-            var now = DateTime.Now;
-            foreach (var job in scheduledJobs)
+            try
             {
-                if (job.Value.ScheduledTime <= now)
+                var now = DateTime.Now;
+                Console.WriteLine($"Checking scheduled jobs at {now}"); // Log để debug
+
+                var dbConnection = new DatabaseConnection(Program.connectionString);
+                var sql = "SELECT job_name, scheduled_time FROM scheduled_jobs WHERE scheduled_time <= @now";
+                var parameters = new Dictionary<string, object> { { "@now", now } };
+                var dataTable = await dbConnection.ExecuteReaderAsync(sql, parameters);
+
+                foreach (DataRow row in dataTable.Rows)
                 {
-                    await ExecuteScheduledJob(job.Key, job.Value.JobUrl);
+                    var jobName = row["job_name"].ToString();
+                    var scheduledTime = Convert.ToDateTime(row["scheduled_time"]);
+                    Console.WriteLine($"Executing scheduled job: {jobName} at {scheduledTime}"); // Log để debug
+
+                    await ExecuteScheduledJob(jobName);
+
+                    // Xóa job đã thực hiện khỏi database
+                    var deleteSql = "DELETE FROM scheduled_jobs WHERE job_name = @jobName AND scheduled_time = @scheduledTime";
+                    var deleteParameters = new Dictionary<string, object>
+                    {
+                        { "@jobName", jobName },
+                        { "@scheduledTime", scheduledTime }
+                    };
+                    await dbConnection.ExecuteNonQueryAsync(deleteSql, deleteParameters);
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in CheckScheduledJobs: {ex.Message}"); // Log lỗi
             }
         }
 
-        private static async Task ExecuteScheduledJob(string jobId, string jobUrl)
+        private static async Task ExecuteScheduledJob(string jobName)
         {
-            var deployResult = await DeployCommand.DeployProjectAsync(jobUrl);
-            scheduledJobs.TryRemove(jobId, out _);
+            try
+            {
+                Console.WriteLine($"Attempting to deploy job: {jobName}"); // Log để debug
+                                                                           // Không cần xử lý đường dẫn ở đây nữa, vì đã được xử lý trong DeployProjectAsync
+                var deployResult = await DeployCommand.DeployProjectAsync(jobName);
+                Console.WriteLine($"Deploy result for {jobName}: {deployResult}"); // Log kết quả
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error executing scheduled job {jobName}: {ex.Message}"); // Log lỗi
+            }
         }
     }
 }

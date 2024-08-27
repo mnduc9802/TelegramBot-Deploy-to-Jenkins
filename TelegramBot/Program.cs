@@ -17,12 +17,14 @@ namespace TelegramBot
         public static ITelegramBotClient botClient;
         public static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
         public static ConcurrentDictionary<long, string> schedulingState = new ConcurrentDictionary<long, string>();
+        public static string connectionString { get; private set; }
+        public static string botToken { get; private set; }
 
         public static async Task Main()
         {
             var envVars = DotEnv.Read(options: new DotEnvOptions(probeForEnv: true));
-            string botToken = envVars["TELEGRAM_BOT_TOKEN"];
-            string connectionString = envVars["DATABASE_CONNECTION_STRING"];
+            botToken = envVars["TELEGRAM_BOT_TOKEN"];
+            connectionString = envVars["DATABASE_CONNECTION_STRING"];
 
             botClient = new TelegramBotClient(botToken);
             await MenuCommand.SetBotCommandsAsync(botClient);
