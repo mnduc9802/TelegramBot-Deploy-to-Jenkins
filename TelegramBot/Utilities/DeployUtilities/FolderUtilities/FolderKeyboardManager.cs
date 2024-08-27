@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot.Types.ReplyMarkups;
 
-namespace TelegramBot.Utilities
+namespace TelegramBot.Utilities.DeployUtilities
 {
     public class FolderKeyboardManager
     {
