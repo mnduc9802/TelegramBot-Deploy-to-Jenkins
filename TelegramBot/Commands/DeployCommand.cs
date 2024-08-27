@@ -213,13 +213,28 @@ namespace TelegramBot.Commands
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
 
             var scheduledJobs = await GetScheduledJobsAsync();
-            var jobList = string.Join("\n", scheduledJobs.Select(j => $"{j.JobName} - {j.ScheduledTime:dd/MM/yyyy HH:mm}"));
 
-            var message = $"Các job đang được lên lịch:\n\n{jobList}\n\nVui lòng nhập thời gian bạn muốn lên lịch triển khai job (định dạng: DD/MM/YYYY HH:mm)";
+            string jobList;
+
+            if (scheduledJobs.Any())
+            {
+                // Sort jobs by scheduled time
+                scheduledJobs = scheduledJobs.OrderBy(j => j.ScheduledTime).ToList();
+
+                // Numbering the jobs
+                jobList = string.Join("\n", scheduledJobs.Select((j, index) => $"{index + 1}. {j.JobName} - {j.ScheduledTime:dd/MM/yyyy HH:mm}"));
+            }
+            else
+            {
+                jobList = "Chưa có job nào được lên lịch.";
+            }
+
+            var message = $"*Các job đang được lên lịch:*\n\n{jobList}\n\nVui lòng nhập thời gian bạn muốn lên lịch triển khai job (định dạng: DD/MM/YYYY HH:mm)";
 
             await botClient.SendTextMessageAsync(
                 callbackQuery.Message.Chat.Id,
                 message,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                 cancellationToken: cancellationToken);
 
             Program.schedulingState[callbackQuery.Message.Chat.Id] = jobUrl;
@@ -239,9 +254,12 @@ namespace TelegramBot.Commands
         {
             string messageText = message.Text.ToLower().Trim();
 
+            // Kiểm tra nếu tin nhắn chứa "hủy" hoặc "cancel", bao gồm cả trường hợp có mention bot
             if (messageText.Contains("hủy") || messageText.Contains("cancel"))
             {
+                // Xóa trạng thái đang chờ nhập thời gian lên lịch
                 Program.schedulingState.TryRemove(message.Chat.Id, out _);
+                // Quay lại bước chọn job để deploy
                 await botClient.SendTextMessageAsync(
                     message.Chat.Id,
                     "Lệnh lên lịch đã bị hủy. Vui lòng /deploy để triển khai lại.",
@@ -249,7 +267,14 @@ namespace TelegramBot.Commands
                 return;
             }
 
-            if (DateTime.TryParseExact(message.Text, "dd/MM/yyyy HH:mm", null, System.Globalization.DateTimeStyles.None, out DateTime scheduledTime))
+            DateTime scheduledTime;
+
+            // Kiểm tra nếu tin nhắn là "df" để đặt lịch mặc định
+            if (messageText.Contains("df"))
+            {
+                scheduledTime = DateTime.Now.AddMinutes(30);
+            }
+            else if (DateTime.TryParseExact(message.Text, "dd/MM/yyyy HH:mm", null, System.Globalization.DateTimeStyles.None, out scheduledTime))
             {
                 if (scheduledTime <= DateTime.Now)
                 {
@@ -259,36 +284,35 @@ namespace TelegramBot.Commands
                         cancellationToken: cancellationToken);
                     return;
                 }
-
-                string jobUrl = Program.schedulingState[message.Chat.Id];
-                string jobName = jobUrl.TrimEnd('/');
-
-                var dbConnection = new DatabaseConnection(Program.connectionString);
-                var sql = "INSERT INTO scheduled_jobs (job_name, scheduled_time, created_at) VALUES (@jobName, @scheduledTime, @createdAt)";
-                var parameters = new Dictionary<string, object>
-                {
-                    { "@jobName", jobName },
-                    { "@scheduledTime", scheduledTime },
-                    { "@createdAt", DateTime.Now }
-                };
-                await dbConnection.ExecuteNonQueryAsync(sql, parameters);
-
-                Console.WriteLine($"Scheduled job {jobName} for {scheduledTime}"); // Log để debug
-
-                await botClient.SendTextMessageAsync(
-                    message.Chat.Id,
-                    $"Đã lên lịch triển khai job {jobName} vào lúc {scheduledTime:dd/MM/yyyy HH:mm}.",
-                    cancellationToken: cancellationToken);
-
-                Program.schedulingState.TryRemove(message.Chat.Id, out _);
             }
             else
             {
                 await botClient.SendTextMessageAsync(
                     message.Chat.Id,
-                    "Định dạng thời gian không hợp lệ. Vui lòng nhập lại theo định dạng DD/MM/YYYY HH:mm",
+                    "Định dạng thời gian không hợp lệ. Vui lòng nhập lại theo định dạng DD/MM/YYYY HH:mm hoặc nhập 'df' để đặt lịch sau 30 phút.",
                     cancellationToken: cancellationToken);
+                return;
             }
+
+            string jobUrl = Program.schedulingState[message.Chat.Id];
+            string jobName = jobUrl.TrimEnd('/');
+            // Lưu job vào database
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            var sql = "INSERT INTO scheduled_jobs (job_name, scheduled_time, created_at) VALUES (@jobName, @scheduledTime, @createdAt)";
+            var parameters = new Dictionary<string, object>
+            {
+                { "@jobName", jobName },
+                { "@scheduledTime", scheduledTime },
+                { "@createdAt", DateTime.Now }
+            };
+            await dbConnection.ExecuteNonQueryAsync(sql, parameters);
+            Console.WriteLine($"Scheduled job {jobName} for {scheduledTime}"); // Log để debug
+            await botClient.SendTextMessageAsync(
+                message.Chat.Id,
+                $"Đã lên lịch triển khai job {jobName} vào lúc {scheduledTime:dd/MM/yyyy HH:mm}.",
+                cancellationToken: cancellationToken);
+            // Xóa trạng thái đang chờ nhập thời gian lên lịch
+            Program.schedulingState.TryRemove(message.Chat.Id, out _);
         }
 
         private static string NormalizeJenkinsPath(string projectPath)
