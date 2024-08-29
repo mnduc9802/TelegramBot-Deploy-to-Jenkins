@@ -136,11 +136,6 @@ namespace TelegramBot
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
             }
 
-            else if (data.StartsWith("schedule_job_"))
-            {
-                await DeployCommand.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
-            }
-
             //Folder
             else if (data.StartsWith("folderpage_"))
             {
@@ -181,6 +176,12 @@ namespace TelegramBot
                     await botClient.SendTextMessageAsync(chatId, "Không thể tìm thấy thông tin trạng thái. Vui lòng thử lại từ đầu.", cancellationToken: cancellationToken);
                 }
                 await botClient.DeleteMessageAsync(chatId, messageId, cancellationToken);
+            }
+
+            //Scheduled Job
+            else if (data.StartsWith("schedule_job_"))
+            {
+                await DeployCommand.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
             }
 
             //Confirmation Folder/Job
