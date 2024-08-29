@@ -79,9 +79,16 @@ namespace TelegramBot
                 return;
             }
 
-            if (schedulingState.TryGetValue(message.Chat.Id, out _))
+            if (schedulingState.TryGetValue(message.Chat.Id, out string state))
             {
-                await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
+                if (state.StartsWith("edit_"))
+                {
+                    await ProjectsCommand.HandleEditJobTimeInputAsync(botClient, message, cancellationToken);
+                }
+                else
+                {
+                    await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
+                }
                 return;
             }
 
@@ -182,6 +189,21 @@ namespace TelegramBot
             else if (data.StartsWith("schedule_job_"))
             {
                 await DeployCommand.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
+            }
+
+            else if (data.StartsWith("show_scheduled_jobs"))
+            {
+                await ProjectsCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+            }
+
+            else if (data.StartsWith("edit_job_"))
+            {
+                await ProjectsCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+            }
+
+            else if (data.StartsWith("delete_job_"))
+            {
+                await ProjectsCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
 
             //Confirmation Folder/Job
