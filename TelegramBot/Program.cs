@@ -96,6 +96,9 @@ namespace TelegramBot
                     case "/deploy":
                         await ShowProjectsKeyboard(chatId, cancellationToken);
                         break;
+                    case "/projects":
+                        await ProjectsCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
                     case "/clear":
                         await ClearCommand.ClearConfirmationKeyboard(botClient, chatId, cancellationToken);
                         break;
@@ -104,9 +107,6 @@ namespace TelegramBot
                         break;
                     case "/status":
                         await StatusCommand.ExecuteAsync(botClient, message, cancellationToken);
-                        break;
-                    case "/projects":
-                        await ProjectsCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/feedback":
                         feedbackState[chatId] = true;

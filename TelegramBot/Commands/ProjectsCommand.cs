@@ -4,6 +4,9 @@ using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using dotenv.net;
+using System.Data;
+using TelegramBot.DbContext;
+using TelegramBot.Models;
 
 namespace TelegramBot.Commands
 {
@@ -25,12 +28,32 @@ namespace TelegramBot.Commands
         {
             try
             {
+                // Lấy danh sách các dự án từ Jenkins
                 var projects = await GetJenkinsProjectsAsync();
-                var projectsList = "Danh sách các dự án:\n" + string.Join("\n", projects.Select((p, i) => $"{i + 1}. {p}"));
+                var projectsList = "*Danh sách các dự án:*\n" + string.Join("\n", projects.Select((p, i) => $"{i + 1}. {p.Replace("_", "\\_")}"));
+
+                // Lấy danh sách các job đang được lên lịch
+                var scheduledJobs = await GetScheduledJobsAsync();
+                string scheduledJobsList;
+
+                if (scheduledJobs.Any())
+                {
+                    // Sắp xếp các job theo thời gian lên lịch
+                    scheduledJobs = scheduledJobs.OrderBy(j => j.ScheduledTime).ToList();
+                    scheduledJobsList = string.Join("\n", scheduledJobs.Select((j, index) => $"{index + 1}. {j.JobName} - {j.ScheduledTime:dd/MM/yyyy HH:mm}"));
+                }
+                else
+                {
+                    scheduledJobsList = "Chưa có job nào được lên lịch.";
+                }
+
+                // Tạo thông báo chứa cả danh sách các dự án và job đang được lên lịch
+                var messageText = $"{projectsList}\n\n*Các job đang được lên lịch:*\n\n{scheduledJobsList}";
 
                 await botClient.SendTextMessageAsync(
                     chatId: message.Chat.Id,
-                    text: projectsList,
+                    text: messageText,
+                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                     cancellationToken: cancellationToken);
             }
             catch (Exception ex)
@@ -40,6 +63,25 @@ namespace TelegramBot.Commands
                     text: $"Có lỗi xảy ra khi lấy danh sách dự án: {ex.Message}",
                     cancellationToken: cancellationToken);
             }
+        }
+
+        private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()
+        {
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            var sql = "SELECT job_name, scheduled_time FROM scheduled_jobs ORDER BY scheduled_time";
+            var dataTable = await dbConnection.ExecuteReaderAsync(sql);
+
+            var scheduledJobs = new List<ScheduledJob>();
+            foreach (DataRow row in dataTable.Rows)
+            {
+                scheduledJobs.Add(new ScheduledJob
+                {
+                    JobName = row["job_name"].ToString(),
+                    ScheduledTime = Convert.ToDateTime(row["scheduled_time"])
+                });
+            }
+
+            return scheduledJobs;
         }
 
         public static async Task<List<string>> GetJenkinsProjectsAsync()

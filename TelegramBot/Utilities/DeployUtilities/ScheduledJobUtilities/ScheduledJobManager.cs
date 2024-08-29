@@ -20,8 +20,6 @@ namespace TelegramBot.Utilities
             try
             {
                 var now = DateTime.Now;
-                Console.WriteLine($"Checking scheduled jobs at {now}"); // Log để debug
-
                 var dbConnection = new DatabaseConnection(Program.connectionString);
                 var sql = "SELECT job_name, scheduled_time FROM scheduled_jobs WHERE scheduled_time <= @now";
                 var parameters = new Dictionary<string, object> { { "@now", now } };
@@ -56,7 +54,6 @@ namespace TelegramBot.Utilities
             try
             {
                 Console.WriteLine($"Attempting to deploy job: {jobName}"); // Log để debug
-                                                                           // Không cần xử lý đường dẫn ở đây nữa, vì đã được xử lý trong DeployProjectAsync
                 var deployResult = await DeployCommand.DeployProjectAsync(jobName);
                 Console.WriteLine($"Deploy result for {jobName}: {deployResult}"); // Log kết quả
             }
