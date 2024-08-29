@@ -64,26 +64,6 @@ namespace TelegramBot.Commands
                     cancellationToken: cancellationToken);
             }
         }
-
-        private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()
-        {
-            var dbConnection = new DatabaseConnection(Program.connectionString);
-            var sql = "SELECT job_name, scheduled_time FROM scheduled_jobs ORDER BY scheduled_time";
-            var dataTable = await dbConnection.ExecuteReaderAsync(sql);
-
-            var scheduledJobs = new List<ScheduledJob>();
-            foreach (DataRow row in dataTable.Rows)
-            {
-                scheduledJobs.Add(new ScheduledJob
-                {
-                    JobName = row["job_name"].ToString(),
-                    ScheduledTime = Convert.ToDateTime(row["scheduled_time"])
-                });
-            }
-
-            return scheduledJobs;
-        }
-
         public static async Task<List<string>> GetJenkinsProjectsAsync()
         {
             try
@@ -109,5 +89,25 @@ namespace TelegramBot.Commands
                 throw new Exception("Failed to retrieve Jenkins projects", ex);
             }
         }
+
+        private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()
+        {
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            var sql = "SELECT job_name, scheduled_time FROM scheduled_jobs ORDER BY scheduled_time";
+            var dataTable = await dbConnection.ExecuteReaderAsync(sql);
+
+            var scheduledJobs = new List<ScheduledJob>();
+            foreach (DataRow row in dataTable.Rows)
+            {
+                scheduledJobs.Add(new ScheduledJob
+                {
+                    JobName = row["job_name"].ToString(),
+                    ScheduledTime = Convert.ToDateTime(row["scheduled_time"])
+                });
+            }
+
+            return scheduledJobs;
+        }
+
     }
 }
