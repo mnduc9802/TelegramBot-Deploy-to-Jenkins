@@ -153,8 +153,6 @@ namespace TelegramBot.Commands
                 cancellationToken: cancellationToken);
         }
 
-
-
         private static async Task EditJobTime(ITelegramBotClient botClient, long chatId, int messageId, string jobName, CancellationToken cancellationToken)
         {
             await botClient.EditMessageTextAsync(
