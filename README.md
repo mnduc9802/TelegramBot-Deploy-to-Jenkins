@@ -8,6 +8,9 @@
 //Telegram API
 TELEGRAM_BOT_TOKEN=*******
 
+//My Telegram Chat Id (Dùng để gửi feedback)
+MY_TELEGRAM_CHAT_ID=*******
+
 //Jenkins Info
 JENKINS_URL=*******
 JENKINS_USERNAME=*******
