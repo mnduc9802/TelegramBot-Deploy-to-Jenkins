@@ -7,7 +7,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.DbContext;
 using TelegramBot.Models;
-using TelegramBot.Utilities;
 using TelegramBot.Utilities.DeployUtilities;
 
 namespace TelegramBot.Commands
