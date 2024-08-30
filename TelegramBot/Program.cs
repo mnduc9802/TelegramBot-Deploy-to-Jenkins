@@ -100,6 +100,9 @@ namespace TelegramBot
                     case "/start":
                         await StartCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
+                    case "/hello":
+                        await HelloCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
                     case "/deploy":
                         await ShowProjectsKeyboard(chatId, cancellationToken);
                         break;
