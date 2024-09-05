@@ -9,6 +9,8 @@ using TelegramBot.Utilities;
 using dotenv.net;
 using System.Collections.Concurrent;
 using Npgsql;
+using TelegramBot.DbContext;
+using TelegramBot.Models;
 
 namespace TelegramBot
 {
@@ -25,6 +27,8 @@ namespace TelegramBot
             var envVars = DotEnv.Read(options: new DotEnvOptions(probeForEnv: true));
             botToken = envVars["TELEGRAM_BOT_TOKEN"];
             connectionString = envVars["DATABASE_CONNECTION_STRING"];
+
+
 
             botClient = new TelegramBotClient(botToken);
             await MenuCommand.SetBotCommandsAsync(botClient);
@@ -104,7 +108,7 @@ namespace TelegramBot
                         await HelloCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/deploy":
-                        await ShowProjectsKeyboard(chatId, cancellationToken);
+                        await ShowProjectsKeyboard(chatId, message.From.Id, cancellationToken);
                         break;
                     case "/projects":
                         await ProjectsCommand.ExecuteAsync(botClient, message, cancellationToken);
@@ -172,7 +176,7 @@ namespace TelegramBot
             }
             else if (data == "back_to_folder")
             {
-                await ShowProjectsKeyboard(chatId, cancellationToken);
+                await ShowProjectsKeyboard(chatId, callbackQuery.From.Id, cancellationToken);
                 await botClient.DeleteMessageAsync(chatId, messageId, cancellationToken);
             }
             else if (data == "back_to_jobs")
@@ -231,6 +235,8 @@ namespace TelegramBot
             await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);
         }
 
+        
+
         private static async Task HandleDeployCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var data = callbackQuery.Data.Substring(7);
@@ -244,9 +250,10 @@ namespace TelegramBot
             }
         }
 
-        private static async Task ShowProjectsKeyboard(long chatId, CancellationToken cancellationToken)
+        private static async Task ShowProjectsKeyboard(long chatId, long userId, CancellationToken cancellationToken)
         {
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
+            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
+            var projects = await ProjectsCommand.GetJenkinsProjectsAsync(userId, userRole);
             FolderPaginator.chatState[chatId] = projects;
             await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
         }

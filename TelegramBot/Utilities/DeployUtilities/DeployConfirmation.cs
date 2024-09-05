@@ -9,7 +9,21 @@ namespace TelegramBot.Utilities.DeployUtilities
     {
         public static async Task DeployConfirmationKeyboard(ITelegramBotClient botClient, CallbackQuery callbackQuery, int projectIndex, CancellationToken cancellationToken)
         {
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
+            var userId = callbackQuery.From.Id;
+            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
+            var projects = await ProjectsCommand.GetJenkinsProjectsAsync(userId, userRole);
+
+            // Kiểm tra nếu danh sách projects không rỗng và projectIndex hợp lệ
+            if (projects == null || !projects.Any() || projectIndex < 0 || projectIndex >= projects.Count)
+            {
+                await botClient.SendTextMessageAsync(
+                    chatId: callbackQuery.Message.Chat.Id,
+                    text: "Dự án không hợp lệ hoặc đã bị thay đổi. Vui lòng thử lại.",
+                    cancellationToken: cancellationToken);
+
+                return;
+            }
+
             var project = projects[projectIndex];
 
             var confirmationKeyboard = new InlineKeyboardMarkup(new[]
@@ -26,10 +40,24 @@ namespace TelegramBot.Utilities.DeployUtilities
                 cancellationToken: cancellationToken);
         }
 
+
         public static async Task HandleConfirmYesCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var projectIndex = int.Parse(callbackQuery.Data.Split('_')[2]);
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync();
+            var userId = callbackQuery.From.Id;
+            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
+            var projects = await ProjectsCommand.GetJenkinsProjectsAsync(userId, userRole);
+
+            if (projects == null || !projects.Any() || projectIndex < 0 || projectIndex >= projects.Count)
+            {
+                await botClient.SendTextMessageAsync(
+                    chatId: callbackQuery.Message.Chat.Id,
+                    text: "Dự án không hợp lệ hoặc đã bị thay đổi. Vui lòng thử lại.",
+                    cancellationToken: cancellationToken);
+
+                return;
+            }
+
             var selectedProject = projects[projectIndex];
 
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
@@ -86,9 +114,11 @@ namespace TelegramBot.Utilities.DeployUtilities
         public static async Task HandleConfirmJobYesCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var jobUrl = callbackQuery.Data.Split('_')[3];
+            var userId = callbackQuery.From.Id;
+            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
 
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
-            var deployResult = await DeployCommand.DeployProjectAsync(jobUrl);
+            var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole);
             await DeployCommand.SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken);
         }
 

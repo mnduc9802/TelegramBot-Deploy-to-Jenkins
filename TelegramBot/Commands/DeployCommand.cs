@@ -14,26 +14,33 @@ namespace TelegramBot.Commands
     public class DeployCommand
     {
         private static readonly string JENKINS_URL;
-        private static readonly string JENKINS_USERNAME;
-        private static readonly string JENKINS_PASSWORD;
+        private static readonly string DEVOPS_USERNAME;
+        private static readonly string DEVOPS_PASSWORD;
+        private static readonly string DEVELOPER_USERNAME;
+        private static readonly string DEVELOPER_PASSWORD;
 
         static DeployCommand()
         {
             DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
             JENKINS_URL = Environment.GetEnvironmentVariable("JENKINS_URL");
-            JENKINS_USERNAME = Environment.GetEnvironmentVariable("JENKINS_USERNAME");
-            JENKINS_PASSWORD = Environment.GetEnvironmentVariable("JENKINS_PASSWORD");
+            DEVOPS_USERNAME = Environment.GetEnvironmentVariable("DEVOPS_USERNAME");
+            DEVOPS_PASSWORD = Environment.GetEnvironmentVariable("DEVOPS_PASSWORD");
+            DEVELOPER_USERNAME = Environment.GetEnvironmentVariable("DEVELOPER_USERNAME");
+            DEVELOPER_PASSWORD = Environment.GetEnvironmentVariable("DEVELOPER_PASSWORD");
         }
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
+            var userId = message.From.Id;
+            var userRole = await GetUserRoleAsync(userId);
+
             var initialMessage = await botClient.SendTextMessageAsync(
                 message.Chat.Id,
                 $"Đang chuẩn bị triển khai {projectPath}...",
                 cancellationToken: cancellationToken
             );
 
-            var jobs = await GetDeployableJobsAsync(projectPath);
+            var jobs = await GetDeployableJobsAsync(projectPath, userRole);
 
             if (jobs.Count == 0)
             {
@@ -72,6 +79,10 @@ namespace TelegramBot.Commands
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var chatId = callbackQuery.Message.Chat.Id;
+            var userId = callbackQuery.From.Id;
+            var userRole = await GetUserRoleAsync(userId);
+
+            
 
             if (callbackQuery.Data.StartsWith("deploy_"))
             {
@@ -89,7 +100,7 @@ namespace TelegramBot.Commands
             {
                 var jobUrl = callbackQuery.Data.Replace("confirm_job_yes_", "");
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
-                var deployResult = await DeployProjectAsync(jobUrl);
+                var deployResult = await DeployProjectAsync(jobUrl, userRole);
                 await SendDeployResultAsync(botClient, chatId, jobUrl, deployResult, cancellationToken);
             }
             else if (callbackQuery.Data == "confirm_job_no")
@@ -103,10 +114,11 @@ namespace TelegramBot.Commands
             }
         }
 
-        private static async Task<List<JobInfo>> GetDeployableJobsAsync(string folderPath)
+        private static async Task<List<JobInfo>> GetDeployableJobsAsync(string folderPath, string userRole)
         {
             using var client = new HttpClient { BaseAddress = new Uri(JENKINS_URL) };
-            var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
+            var credentials = GetCredentialsForRole(userRole);
+            var byteArray = Encoding.ASCII.GetBytes($"{credentials.Username}:{credentials.Password}");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
             return await GetJobsRecursivelyAsync(client, folderPath, folderPath);
@@ -143,12 +155,13 @@ namespace TelegramBot.Commands
             return result;
         }
 
-        public static async Task<bool> DeployProjectAsync(string projectPath)
+        public static async Task<bool> DeployProjectAsync(string projectPath, string userRole)
         {
             try
             {
                 using var client = new HttpClient { BaseAddress = new Uri(JENKINS_URL) };
-                var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
+                var credentials = GetCredentialsForRole(userRole);
+                var byteArray = Encoding.ASCII.GetBytes($"{credentials.Username}:{credentials.Password}");
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
                 var crumbResponse = await client.GetAsync("/crumbIssuer/api/json");
@@ -161,7 +174,6 @@ namespace TelegramBot.Commands
                 var crumbJson = JObject.Parse(await crumbResponse.Content.ReadAsStringAsync());
                 client.DefaultRequestHeaders.Add(crumbJson["crumbRequestField"].ToString(), crumbJson["crumb"].ToString());
 
-                // Sửa đổi cách xử lý đường dẫn
                 var url = $"/job/{projectPath.Replace("/", "/")}/build";
                 Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
 
@@ -184,6 +196,25 @@ namespace TelegramBot.Commands
                 Console.WriteLine($"Deployment failed: {ex.Message}");
                 return false;
             }
+        }
+
+        private static async Task<string> GetUserRoleAsync(long userId)
+        {
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            var sql = "SELECT role FROM user_roles WHERE user_id = @userId";
+            var parameters = new Dictionary<string, object> { { "@userId", userId } };
+            var result = await dbConnection.ExecuteScalarAsync(sql, parameters);
+            return result?.ToString() ?? "unknown";
+        }
+
+        private static (string Username, string Password) GetCredentialsForRole(string role)
+        {
+            return role.ToLower() switch
+            {
+                "devops" => (DEVOPS_USERNAME, DEVOPS_PASSWORD),
+                "developer" => (DEVELOPER_USERNAME, DEVELOPER_PASSWORD),
+                _ => (DEVELOPER_USERNAME, DEVELOPER_PASSWORD) // Default to developer credentials
+            };
         }
 
         private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()

@@ -14,22 +14,32 @@ namespace TelegramBot.Commands
     public class ProjectsCommand
     {
         private static readonly string JENKINS_URL;
-        private static readonly string JENKINS_USERNAME;
-        private static readonly string JENKINS_PASSWORD;
+        private static readonly string DEVOPS_USERNAME;
+        private static readonly string DEVOPS_PASSWORD;
+        private static readonly string DEVELOPER_USERNAME;
+        private static readonly string DEVELOPER_PASSWORD;
 
         static ProjectsCommand()
         {
             DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
             JENKINS_URL = Environment.GetEnvironmentVariable("JENKINS_URL");
-            JENKINS_USERNAME = Environment.GetEnvironmentVariable("JENKINS_USERNAME");
-            JENKINS_PASSWORD = Environment.GetEnvironmentVariable("JENKINS_PASSWORD");
+            DEVOPS_USERNAME = Environment.GetEnvironmentVariable("DEVOPS_USERNAME");
+            DEVOPS_PASSWORD = Environment.GetEnvironmentVariable("DEVOPS_PASSWORD");
+            DEVELOPER_USERNAME = Environment.GetEnvironmentVariable("DEVELOPER_USERNAME");
+            DEVELOPER_PASSWORD = Environment.GetEnvironmentVariable("DEVELOPER_PASSWORD");
         }
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
             try
             {
-                var projects = await GetJenkinsProjectsAsync();
+                var userId = message.From.Id;
+                var userRole = await GetUserRoleAsync(userId);
+                Console.WriteLine($"User Role: {userRole}");
+                Console.WriteLine($"JENKINS_URL: {JENKINS_URL}");
+                Console.WriteLine($"DEVELOPER_USERNAME: {DEVELOPER_USERNAME}");
+                Console.WriteLine($"DEVELOPER_PASSWORD: {DEVELOPER_PASSWORD}");
+                var projects = await GetJenkinsProjectsAsync(userId, userRole);
                 var projectsList = "*Danh sách các dự án:*\n" + string.Join("\n", projects.Select((p, i) => $"{i + 1}. {p.Replace("_", "\\_")}"));
 
                 var keyboard = new InlineKeyboardMarkup(new[]
@@ -56,14 +66,42 @@ namespace TelegramBot.Commands
             }
         }
 
-        public static async Task<List<string>> GetJenkinsProjectsAsync()
+        public static async Task<string> GetUserRoleAsync(long userId)
+        {
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            var sql = "SELECT role FROM user_roles WHERE user_id = @userId";
+            var parameters = new Dictionary<string, object> { { "@userId", userId } };
+            var result = await dbConnection.ExecuteScalarAsync(sql, parameters);
+            return result?.ToString() ?? "unknown";
+        }
+
+        public static async Task<List<string>> GetJenkinsProjectsAsync(long userId, string userRole)
         {
             try
             {
                 using (var client = new HttpClient())
                 {
                     client.BaseAddress = new Uri(JENKINS_URL);
-                    var byteArray = Encoding.ASCII.GetBytes($"{JENKINS_USERNAME}:{JENKINS_PASSWORD}");
+                    string username, password;
+
+                    Console.WriteLine($"Received role: {userRole} for user ID: {userId}");
+
+                    if (string.Equals(userRole, "devops", StringComparison.OrdinalIgnoreCase))
+                    {
+                        username = DEVOPS_USERNAME;
+                        password = DEVOPS_PASSWORD;
+                    }
+                    else if (string.Equals(userRole, "developer", StringComparison.OrdinalIgnoreCase))
+                    {
+                        username = DEVELOPER_USERNAME;
+                        password = DEVELOPER_PASSWORD;
+                    }
+                    else
+                    {
+                        throw new UnauthorizedAccessException($"User with role '{userRole}' does not have permission to access Jenkins projects.");
+                    }
+
+                    var byteArray = Encoding.ASCII.GetBytes($"{username}:{password}");
                     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
                     var response = await client.GetAsync("/api/json?tree=jobs[name]");
@@ -74,6 +112,11 @@ namespace TelegramBot.Commands
 
                     return json["jobs"].Select(job => job["name"].ToString()).ToList();
                 }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"Unauthorized access: {ex.Message}");
+                throw;
             }
             catch (Exception ex)
             {
