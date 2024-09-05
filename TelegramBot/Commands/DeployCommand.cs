@@ -282,14 +282,12 @@ namespace TelegramBot.Commands
 
         public static async Task HandleScheduleTimeInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
-            string messageText = message.Text.ToLower().Trim();
+            string messageText = message.Text.Trim();
 
-            // Kiểm tra nếu tin nhắn chứa "hủy" hoặc "cancel", bao gồm cả trường hợp có mention bot
-            if (messageText.Contains("hủy") || messageText.Contains("cancel"))
+            // Kiểm tra nếu tin nhắn chứa "hủy" hoặc "cancel"
+            if (messageText.ToLower().Contains("hủy") || messageText.ToLower().Contains("cancel"))
             {
-                // Xóa trạng thái đang chờ nhập thời gian lên lịch
                 Program.schedulingState.TryRemove(message.Chat.Id, out _);
-                // Quay lại bước chọn job để deploy
                 await botClient.SendTextMessageAsync(
                     message.Chat.Id,
                     "Lệnh lên lịch đã bị hủy. Vui lòng /deploy để triển khai lại.",
@@ -300,40 +298,49 @@ namespace TelegramBot.Commands
             DateTime scheduledTime;
 
             // Kiểm tra nếu tin nhắn là "df" để đặt lịch mặc định
-            if (messageText.Contains("df"))
+            if (messageText.ToLower().Contains("df"))
             {
                 scheduledTime = DateTime.Now.AddMinutes(30);
             }
-            else if (DateTime.TryParseExact(message.Text, "dd/MM/yyyy HH:mm", null, System.Globalization.DateTimeStyles.None, out scheduledTime))
+            else
             {
-                if (scheduledTime <= DateTime.Now)
+                // Loại bỏ tên bot và các khoảng trắng thừa
+                string[] parts = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                string timeString = string.Join(" ", parts.Skip(parts[0].StartsWith("@") ? 1 : 0));
+
+                if (DateTime.TryParseExact(timeString, "dd/MM/yyyy HH:mm", null, System.Globalization.DateTimeStyles.None, out scheduledTime))
+                {
+                    if (scheduledTime <= DateTime.Now)
+                    {
+                        await botClient.SendTextMessageAsync(
+                            message.Chat.Id,
+                            "Thời gian lên lịch phải là trong tương lai. Vui lòng thử lại.",
+                            cancellationToken: cancellationToken);
+                        return;
+                    }
+                }
+                else
                 {
                     await botClient.SendTextMessageAsync(
                         message.Chat.Id,
-                        "Thời gian lên lịch phải là trong tương lai. Vui lòng thử lại.",
+                        "Định dạng thời gian không hợp lệ. Vui lòng nhập lại theo định dạng DD/MM/YYYY HH:mm hoặc nhập 'df' để đặt lịch sau 30 phút.",
                         cancellationToken: cancellationToken);
                     return;
                 }
             }
-            else
-            {
-                await botClient.SendTextMessageAsync(
-                    message.Chat.Id,
-                    "Định dạng thời gian không hợp lệ. Vui lòng nhập lại theo định dạng DD/MM/YYYY HH:mm hoặc nhập 'df' để đặt lịch sau 30 phút.",
-                    cancellationToken: cancellationToken);
-                return;
-            }
 
+            // Phần còn lại của mã không thay đổi
             string jobUrl = Program.schedulingState[message.Chat.Id];
             string jobName = jobUrl.TrimEnd('/');
             // Lưu job vào database
             var dbConnection = new DatabaseConnection(Program.connectionString);
-            var sql = "INSERT INTO scheduled_jobs (job_name, scheduled_time, created_at) VALUES (@jobName, @scheduledTime, @createdAt)";
+            var sql = "INSERT INTO scheduled_jobs (job_name, scheduled_time, created_at, user_id) VALUES (@jobName, @scheduledTime, @createdAt, @userId)";
             var parameters = new Dictionary<string, object>
             {
                 { "@jobName", jobName },
                 { "@scheduledTime", scheduledTime },
-                { "@createdAt", DateTime.Now }
+                { "@createdAt", DateTime.Now },
+                { "@userId", message.From.Id }
             };
             await dbConnection.ExecuteNonQueryAsync(sql, parameters);
             Console.WriteLine($"Scheduled job {jobName} for {scheduledTime}"); // Log để debug
