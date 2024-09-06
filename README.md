@@ -13,8 +13,15 @@ MY_TELEGRAM_CHAT_ID=*******
 
 //Jenkins Info
 JENKINS_URL=*******
-JENKINS_USERNAME=*******
-JENKINS_PASSWORD=******
+
+DEVOPS_USERNAME=*******
+DEVOPS_PASSWORD=*******
+
+DEVELOPER_USERNAME=*******
+DEVELOPER_PASSWORD=*******
+
+TESTER_USERNAME=*******
+TESTER_PASSWORD=*******
 
 //Database Info
 DATABASE_CONNECTION_STRING=*******
@@ -51,12 +58,17 @@ Bot được thiết kế để xử lý các lệnh và phản hồi từ ngư�
 ## Command
 
 ### StartCommand
-- **Mô tả**: Gửi tin nhắn chào mừng và các tùy chọn lệnh.
+- **Mô tả**: Gửi tin nhắn thông báo đến Group Chat khác.
 - **Lệnh**: `/start`
+- **Hành động**: Gửi tin nhắn thông báo.
+
+### HelloCommand
+- **Mô tả**: Gửi tin nhắn chào mừng người dùng và giới thiệu về Bot.
+- **Lệnh**: `/hello`
 - **Hành động**: Gửi tin nhắn chào mừng.
 
 ### ProjectsCommand
-- **Mô tả**: Hiển thị danh sách các dự án.
+- **Mô tả**: Hiển thị danh sách các dự án và danh sách các Job đang được lên lịch.
 - **Lệnh**: `/projects`
 - **Hành động**: Gửi tin nhắn với danh sách các dự án hiện tại.
 
