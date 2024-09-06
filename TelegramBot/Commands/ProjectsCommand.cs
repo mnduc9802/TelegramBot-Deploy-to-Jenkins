@@ -18,6 +18,8 @@ namespace TelegramBot.Commands
         private static readonly string DEVOPS_PASSWORD;
         private static readonly string DEVELOPER_USERNAME;
         private static readonly string DEVELOPER_PASSWORD;
+        private static readonly string TESTER_USERNAME;
+        private static readonly string TESTER_PASSWORD;
 
         static ProjectsCommand()
         {
@@ -27,6 +29,8 @@ namespace TelegramBot.Commands
             DEVOPS_PASSWORD = Environment.GetEnvironmentVariable("DEVOPS_PASSWORD");
             DEVELOPER_USERNAME = Environment.GetEnvironmentVariable("DEVELOPER_USERNAME");
             DEVELOPER_PASSWORD = Environment.GetEnvironmentVariable("DEVELOPER_PASSWORD");
+            TESTER_USERNAME = Environment.GetEnvironmentVariable("TESTER_USERNAME");
+            TESTER_PASSWORD = Environment.GetEnvironmentVariable("TESTER_PASSWORD");
         }
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
@@ -91,6 +95,11 @@ namespace TelegramBot.Commands
                     {
                         username = DEVELOPER_USERNAME;
                         password = DEVELOPER_PASSWORD;
+                    }
+                    else if (string.Equals(userRole, "tester", StringComparison.OrdinalIgnoreCase))
+                    {
+                        username = TESTER_USERNAME;
+                        password = TESTER_PASSWORD;
                     }
                     else
                     {
