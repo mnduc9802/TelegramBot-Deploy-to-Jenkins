@@ -75,9 +75,9 @@ namespace TelegramBot.Utilities.DeployUtilities
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
         }
 
-        public static async Task JobDeployConfirmationKeyboard(ITelegramBotClient botClient, long chatId, string jobUrl, CancellationToken cancellationToken, int? messageId = null)
+        public static async Task JobDeployConfirmationKeyboard(ITelegramBotClient botClient, long chatId, string jobUrl, bool hasParameter, CancellationToken cancellationToken, int? messageId = null)
         {
-            var confirmationKeyboard = new InlineKeyboardMarkup(new[]
+            var buttons = new List<InlineKeyboardButton[]>
             {
                 new []
                 {
@@ -88,7 +88,17 @@ namespace TelegramBot.Utilities.DeployUtilities
                 {
                     InlineKeyboardButton.WithCallbackData("Lên lịch", $"schedule_job_{jobUrl}")
                 }
+            };
+
+            if (hasParameter)
+            {
+                buttons.Add(new[]
+                {
+                InlineKeyboardButton.WithCallbackData("Nhập Version", $"enter_version_{jobUrl}")
             });
+            }
+
+            var confirmationKeyboard = new InlineKeyboardMarkup(buttons);
 
             string message = $"Bạn đã chọn job {jobUrl}. Bạn muốn thực hiện hành động nào?";
 

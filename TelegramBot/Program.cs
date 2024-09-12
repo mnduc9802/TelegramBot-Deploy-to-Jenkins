@@ -19,6 +19,7 @@ namespace TelegramBot
         public static ITelegramBotClient botClient;
         public static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
         public static ConcurrentDictionary<long, string> schedulingState = new ConcurrentDictionary<long, string>();
+        public static ConcurrentDictionary<long, string> versionInputState = new ConcurrentDictionary<long, string>();
         public static string connectionString { get; private set; }
         public static string botToken { get; private set; }
 
@@ -96,6 +97,12 @@ namespace TelegramBot
                 return;
             }
 
+            if (versionInputState.TryGetValue(message.Chat.Id, out string jobUrl))
+            {
+                await HandleVersionInputAsync(botClient, message, jobUrl, cancellationToken);
+                return;
+            }
+
             if (text.StartsWith("/"))
             {
                 var command = text.Split(' ')[0].ToLower();
@@ -168,6 +175,16 @@ namespace TelegramBot
                     await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
                 }
             }
+            else if (data.StartsWith("enter_version_"))
+            {
+                var jobUrl = data.Substring("enter_version_".Length);
+                versionInputState[callbackQuery.Message.Chat.Id] = jobUrl;
+                await botClient.SendTextMessageAsync(
+                    callbackQuery.Message.Chat.Id,
+                    "Vui lòng nhập tham số VERSION:",
+                    cancellationToken: cancellationToken);
+                await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
+            }
 
             //Job
             else if (data == "search")
@@ -235,7 +252,15 @@ namespace TelegramBot
             await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);
         }
 
-        
+        private static async Task HandleVersionInputAsync(ITelegramBotClient botClient, Message message, string jobUrl, CancellationToken cancellationToken)
+        {
+            var version = message.Text.Trim();
+            versionInputState.TryRemove(message.Chat.Id, out _);
+
+            var userRole = await ProjectsCommand.GetUserRoleAsync(message.From.Id);
+            var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole, version);
+            await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
+        }
 
         private static async Task HandleDeployCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {

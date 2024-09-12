@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Net.Http.Headers;
+using System.Reflection.Metadata;
 using System.Text;
 using dotenv.net;
 using Newtonsoft.Json.Linq;
@@ -62,6 +63,7 @@ namespace TelegramBot.Commands
                     botClient,
                     message.Chat.Id,
                     jobs[0].Url,
+                    jobs[0].Name.EndsWith("_parameter"),
                     cancellationToken
                 );
             }
@@ -86,14 +88,20 @@ namespace TelegramBot.Commands
             var userId = callbackQuery.From.Id;
             var userRole = await GetUserRoleAsync(userId);
 
-            
-
             if (callbackQuery.Data.StartsWith("deploy_"))
             {
                 var shortId = callbackQuery.Data.Replace("deploy_", "");
                 if (JobKeyboardManager.jobUrlMap.TryGetValue(shortId, out string jobUrl))
                 {
-                    await DeployConfirmation.JobDeployConfirmationKeyboard(botClient, chatId, jobUrl, cancellationToken, callbackQuery.Message.MessageId);
+                    bool hasParameter = jobUrl.EndsWith("_parameter");
+                    await DeployConfirmation.JobDeployConfirmationKeyboard(
+                        botClient,
+                        chatId,
+                        jobUrl,
+                        hasParameter,
+                        cancellationToken,
+                        callbackQuery.Message.MessageId
+                    );
                 }
                 else
                 {
@@ -159,7 +167,7 @@ namespace TelegramBot.Commands
             return result;
         }
 
-        public static async Task<bool> DeployProjectAsync(string projectPath, string userRole)
+        public static async Task<bool> DeployProjectAsync(string projectPath, string userRole, string parameter = null)
         {
             try
             {
@@ -179,6 +187,10 @@ namespace TelegramBot.Commands
                 client.DefaultRequestHeaders.Add(crumbJson["crumbRequestField"].ToString(), crumbJson["crumb"].ToString());
 
                 var url = $"/job/{projectPath.Replace("/", "/")}/build";
+                if (!string.IsNullOrEmpty(parameter))
+                {
+                    url += $"WithParameters?VERSION={parameter}";
+                }
                 Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
 
                 var response = await client.PostAsync(url, null);
