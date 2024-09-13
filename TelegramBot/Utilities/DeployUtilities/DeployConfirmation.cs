@@ -77,26 +77,29 @@ namespace TelegramBot.Utilities.DeployUtilities
 
         public static async Task JobDeployConfirmationKeyboard(ITelegramBotClient botClient, long chatId, string jobUrl, bool hasParameter, CancellationToken cancellationToken, int? messageId = null)
         {
-            var buttons = new List<InlineKeyboardButton[]>
-            {
-                new []
-                {
-                    InlineKeyboardButton.WithCallbackData("Không", "confirm_job_no"),
-                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_job_yes_{jobUrl}")
-                },
-                new []
-                {
-                    InlineKeyboardButton.WithCallbackData("Lên lịch", $"schedule_job_{jobUrl}")
-                }
-            };
+            var buttons = new List<InlineKeyboardButton[]>();
 
             if (hasParameter)
             {
                 buttons.Add(new[]
                 {
-                InlineKeyboardButton.WithCallbackData("Nhập Version", $"enter_version_{jobUrl}")
-            });
+                    InlineKeyboardButton.WithCallbackData("Không", "confirm_job_no"),
+                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"enter_version_{jobUrl}")
+                });
             }
+            else
+            {
+                buttons.Add(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Không", "confirm_job_no"),
+                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_job_yes_{jobUrl}")
+                });
+            }
+
+            buttons.Add(new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Lên lịch", $"schedule_job_{jobUrl}")
+            });
 
             var confirmationKeyboard = new InlineKeyboardMarkup(buttons);
 
