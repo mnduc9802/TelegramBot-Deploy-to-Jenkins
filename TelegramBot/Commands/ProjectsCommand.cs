@@ -238,7 +238,13 @@ namespace TelegramBot.Commands
         {
             var chatId = message.Chat.Id;
             var userId = message.From.Id;
-            var jobName = Program.schedulingState[chatId].Replace("edit_", "");
+            if (!Program.schedulingState.TryGetValue(chatId, out var state) || !state.StartsWith("edit_"))
+            {
+                await botClient.SendTextMessageAsync(chatId, "Có lỗi xảy ra. Vui lòng thử lại.", cancellationToken: cancellationToken);
+                return;
+            }
+
+            var jobName = state.Substring(5); // Loại bỏ tiền tố "edit_"
             string messageText = message.Text.Trim();
 
             // Kiểm tra nếu tin nhắn chứa "hủy" hoặc "cancel"
@@ -247,7 +253,7 @@ namespace TelegramBot.Commands
                 Program.schedulingState.TryRemove(chatId, out _);
                 await botClient.SendTextMessageAsync(
                     chatId,
-                    "Lệnh sửa lịch đã bị hủy. Vui lòng /projects để triển khai lại.",
+                    "Lệnh sửa lịch đã bị hủy. Vui lòng /projects để xem lại danh sách.",
                     cancellationToken: cancellationToken);
                 return;
             }
@@ -289,7 +295,7 @@ namespace TelegramBot.Commands
 
             // Cập nhật thời gian lên lịch vào database
             var dbConnection = new DatabaseConnection(Program.connectionString);
-            var sql = "UPDATE scheduled_jobs SET scheduled_time = @scheduledTime WHERE job_name = @jobName AND user_id = @userId";
+            string sql = "UPDATE scheduled_jobs SET scheduled_time = @scheduledTime WHERE job_name = @jobName AND user_id = @userId";
             var parameters = new Dictionary<string, object>
             {
                 { "@scheduledTime", scheduledTime },
@@ -301,9 +307,11 @@ namespace TelegramBot.Commands
 
             if (rowsAffected > 0)
             {
+                string confirmationMessage = $"Đã cập nhật thời gian cho job {jobName} thành {scheduledTime:dd/MM/yyyy HH:mm}.";
+
                 await botClient.SendTextMessageAsync(
                     chatId: chatId,
-                    text: $"Đã cập nhật thời gian cho job {jobName} thành {scheduledTime:dd/MM/yyyy HH:mm}.",
+                    text: confirmationMessage,
                     cancellationToken: cancellationToken);
             }
             else

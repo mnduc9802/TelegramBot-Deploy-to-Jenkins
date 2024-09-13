@@ -90,18 +90,30 @@ namespace TelegramBot
                 return;
             }
 
-            if (schedulingState.TryGetValue(message.Chat.Id, out string state))
+            if (Program.schedulingState.TryGetValue(message.Chat.Id, out string state))
             {
-                if (state.Contains("|"))
+                if (state.StartsWith("edit_"))
                 {
-                    await DeployCommand.HandleScheduleParameterInputAsync(botClient, message, cancellationToken);
+                    // Đây là trường hợp chỉnh sửa lên lịch
+                    await ProjectsCommand.HandleEditJobTimeInputAsync(botClient, message, cancellationToken);
                 }
                 else
                 {
-                    await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
+                    // Đây là trường hợp tạo mới lên lịch
+                    if (state.Contains("|"))
+                    {
+                        // Xử lý input tham số
+                        await DeployCommand.HandleScheduleParameterInputAsync(botClient, message, cancellationToken);
+                    }
+                    else
+                    {
+                        // Xử lý input thời gian
+                        await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
+                    }
                 }
                 return;
             }
+
 
             if (text.StartsWith("/"))
             {
