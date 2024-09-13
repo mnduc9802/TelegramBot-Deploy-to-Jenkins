@@ -84,22 +84,22 @@ namespace TelegramBot
                 return;
             }
 
+            if (versionInputState.TryGetValue(message.Chat.Id, out string jobUrl))
+            {
+                await HandleVersionInputAsync(botClient, message, jobUrl, cancellationToken);
+                return;
+            }
+
             if (schedulingState.TryGetValue(message.Chat.Id, out string state))
             {
-                if (state.StartsWith("edit_"))
+                if (state.Contains("|"))
                 {
-                    await ProjectsCommand.HandleEditJobTimeInputAsync(botClient, message, cancellationToken);
+                    await DeployCommand.HandleScheduleParameterInputAsync(botClient, message, cancellationToken);
                 }
                 else
                 {
                     await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
                 }
-                return;
-            }
-
-            if (versionInputState.TryGetValue(message.Chat.Id, out string jobUrl))
-            {
-                await HandleVersionInputAsync(botClient, message, jobUrl, cancellationToken);
                 return;
             }
 
