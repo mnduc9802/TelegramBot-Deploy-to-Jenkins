@@ -168,6 +168,10 @@ namespace TelegramBot
                 await HandleDeployCallback(callbackQuery, cancellationToken);
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
             }
+            else if (data == "show_projects")
+            {
+                await ProjectsCommand.ShowProjects(botClient, chatId, callbackQuery.From.Id, cancellationToken);
+            }
 
             //Folder
             else if (data.StartsWith("folderpage_"))

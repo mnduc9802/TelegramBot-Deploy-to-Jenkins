@@ -37,13 +37,12 @@ namespace TelegramBot.Commands
         {
             try
             {
-                var userId = message.From.Id;
-                var userRole = await GetUserRoleAsync(userId);
-                var projects = await GetJenkinsProjectsAsync(userId, userRole);
-                var projectsList = "*Danh sách các dự án:*\n" + string.Join("\n", projects.Select((p, i) => $"{i + 1}. {p.Replace("_", "\\_")}"));
-
                 var keyboard = new InlineKeyboardMarkup(new[]
                 {
+                    new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Danh sách các dự án đang triển khai", "show_projects")
+                    },
                     new[]
                     {
                         InlineKeyboardButton.WithCallbackData("Danh sách các job đã lên lịch", "show_scheduled_jobs")
@@ -52,8 +51,7 @@ namespace TelegramBot.Commands
 
                 await botClient.SendTextMessageAsync(
                     chatId: message.Chat.Id,
-                    text: projectsList,
-                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                    text: "Chọn một tùy chọn:",
                     replyMarkup: keyboard,
                     cancellationToken: cancellationToken);
             }
@@ -61,7 +59,7 @@ namespace TelegramBot.Commands
             {
                 await botClient.SendTextMessageAsync(
                     chatId: message.Chat.Id,
-                    text: $"Có lỗi xảy ra khi lấy danh sách dự án: {ex.Message}",
+                    text: $"Có lỗi xảy ra: {ex.Message}",
                     cancellationToken: cancellationToken);
             }
         }
@@ -155,6 +153,9 @@ namespace TelegramBot.Commands
 
             switch (callbackQuery.Data)
             {
+                case "show_projects":
+                    await ShowProjects(botClient, chatId, callbackQuery.From.Id, cancellationToken);
+                    break;
                 case "show_scheduled_jobs":
                     await ShowScheduledJobs(botClient, chatId, cancellationToken);
                     break;
@@ -167,7 +168,30 @@ namespace TelegramBot.Commands
             }
         }
 
-        private static async Task ShowScheduledJobs(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
+        public static async Task ShowProjects(ITelegramBotClient botClient, long chatId, long userId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var userRole = await GetUserRoleAsync(userId);
+                var projects = await GetJenkinsProjectsAsync(userId, userRole);
+                var projectsList = "*Danh sách các dự án:*\n" + string.Join("\n", projects.Select((p, i) => $"{i + 1}. {p.Replace("_", "\\_")}"));
+
+                await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: projectsList,
+                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                    cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: $"Có lỗi xảy ra khi lấy danh sách dự án: {ex.Message}",
+                    cancellationToken: cancellationToken);
+            }
+        }
+
+        public static async Task ShowScheduledJobs(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken)
         {
             var scheduledJobs = await GetScheduledJobsAsync();
 
@@ -204,7 +228,7 @@ namespace TelegramBot.Commands
                 cancellationToken: cancellationToken);
         }
 
-        private static async Task EditJobTime(ITelegramBotClient botClient, long chatId, int messageId, string jobName, CancellationToken cancellationToken)
+        public static async Task EditJobTime(ITelegramBotClient botClient, long chatId, int messageId, string jobName, CancellationToken cancellationToken)
         {
             await botClient.EditMessageTextAsync(
                 chatId: chatId,
@@ -216,7 +240,7 @@ namespace TelegramBot.Commands
             Program.schedulingState[chatId] = $"edit_{jobName}";
         }
 
-        private static async Task DeleteJob(ITelegramBotClient botClient, long chatId, int messageId, string jobName, CancellationToken cancellationToken)
+        public static async Task DeleteJob(ITelegramBotClient botClient, long chatId, int messageId, string jobName, CancellationToken cancellationToken)
         {
             var dbConnection = new DatabaseConnection(Program.connectionString);
             var sql = "DELETE FROM scheduled_jobs WHERE job_name = @jobName";
