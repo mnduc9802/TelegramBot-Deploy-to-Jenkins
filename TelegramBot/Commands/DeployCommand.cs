@@ -1,37 +1,56 @@
 ﻿using System.Data;
 using System.Net.Http.Headers;
-using System.Reflection.Metadata;
 using System.Text;
-using dotenv.net;
 using Newtonsoft.Json.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.DbContext;
 using TelegramBot.Models;
+using TelegramBot.Utilities;
 using TelegramBot.Utilities.DeployUtilities;
 
 namespace TelegramBot.Commands
 {
     public class DeployCommand
     {
-        private static readonly string JENKINS_URL;
-        private static readonly string DEVOPS_USERNAME;
-        private static readonly string DEVOPS_PASSWORD;
-        private static readonly string DEVELOPER_USERNAME;
-        private static readonly string DEVELOPER_PASSWORD;
-        private static readonly string TESTER_USERNAME;
-        private static readonly string TESTER_PASSWORD;
 
-        static DeployCommand()
+        private static async Task<int> GetOrCreateJobUrlId(string url)
         {
-            DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
-            JENKINS_URL = Environment.GetEnvironmentVariable("JENKINS_URL");
-            DEVOPS_USERNAME = Environment.GetEnvironmentVariable("DEVOPS_USERNAME");
-            DEVOPS_PASSWORD = Environment.GetEnvironmentVariable("DEVOPS_PASSWORD");
-            DEVELOPER_USERNAME = Environment.GetEnvironmentVariable("DEVELOPER_USERNAME");
-            DEVELOPER_PASSWORD = Environment.GetEnvironmentVariable("DEVELOPER_PASSWORD");
-            TESTER_USERNAME = Environment.GetEnvironmentVariable("TESTER_USERNAME");
-            TESTER_PASSWORD = Environment.GetEnvironmentVariable("TESTER_PASSWORD");
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
+
+            // Trích xuất phần path từ URL đầy đủ
+            Uri uri = new Uri(url);
+            string path = uri.AbsolutePath.TrimStart('/');
+
+            // Loại bỏ "job/" từ đầu path nếu có
+            if (path.StartsWith("job/", StringComparison.OrdinalIgnoreCase))
+            {
+                path = path.Substring(4);
+            }
+
+            var selectSql = "SELECT id FROM job_urls WHERE url = @url";
+            var selectParams = new Dictionary<string, object> { { "@url", path } };
+            var result = await dbConnection.ExecuteScalarAsync(selectSql, selectParams);
+            if (result != null)
+            {
+                return Convert.ToInt32(result);
+            }
+
+            var insertSql = "INSERT INTO job_urls (url) VALUES (@url) RETURNING id";
+            var insertParams = new Dictionary<string, object> { { "@url", path } };
+            result = await dbConnection.ExecuteScalarAsync(insertSql, insertParams);
+            return Convert.ToInt32(result);
+        }
+
+        public static async Task<string> GetJobUrlFromId(int id)
+        {
+            var dbConnection = new DatabaseConnection(Program.connectionString);
+            var sql = "SELECT url FROM job_urls WHERE id = @id";
+            var parameters = new Dictionary<string, object> { { "@id", id } };
+            var result = await dbConnection.ExecuteScalarAsync(sql, parameters);
+
+            return result?.ToString();
         }
 
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
@@ -59,10 +78,11 @@ namespace TelegramBot.Commands
             else if (jobs.Count == 1)
             {
                 await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
+                var jobUrlId = await GetOrCreateJobUrlId(jobs[0].Url);
                 await DeployConfirmation.JobDeployConfirmationKeyboard(
                     botClient,
                     message.Chat.Id,
-                    jobs[0].Url,
+                    jobUrlId.ToString(),
                     jobs[0].Name.EndsWith("_parameter"),
                     cancellationToken
                 );
@@ -90,14 +110,15 @@ namespace TelegramBot.Commands
 
             if (callbackQuery.Data.StartsWith("deploy_"))
             {
-                var shortId = callbackQuery.Data.Replace("deploy_", "");
-                if (JobKeyboardManager.jobUrlMap.TryGetValue(shortId, out string jobUrl))
+                var jobUrlId = int.Parse(callbackQuery.Data.Replace("deploy_", ""));
+                var jobUrl = await GetJobUrlFromId(jobUrlId);
+                if (jobUrl != null)
                 {
                     bool hasParameter = jobUrl.EndsWith("_parameter");
                     await DeployConfirmation.JobDeployConfirmationKeyboard(
                         botClient,
                         chatId,
-                        jobUrl,
+                        jobUrlId.ToString(),
                         hasParameter,
                         cancellationToken,
                         callbackQuery.Message.MessageId
@@ -128,11 +149,11 @@ namespace TelegramBot.Commands
 
         private static async Task<List<JobInfo>> GetDeployableJobsAsync(string folderPath, string userRole)
         {
-            using var client = new HttpClient { BaseAddress = new Uri(JENKINS_URL) };
+            string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
+            using var client = new HttpClient { BaseAddress = new Uri(jenkinsUrl) };
             var credentials = GetCredentialsForRole(userRole);
             var byteArray = Encoding.ASCII.GetBytes($"{credentials.Username}:{credentials.Password}");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
-
             return await GetJobsRecursivelyAsync(client, folderPath, folderPath);
         }
 
@@ -151,7 +172,8 @@ namespace TelegramBot.Commands
             {
                 var jobName = job["name"].ToString();
                 var jobUrl = job["url"].ToString();
-                var relativeUrl = jobUrl.Replace(JENKINS_URL + "/job/", "").TrimEnd('/');
+                string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
+                var relativeUrl = jobUrl.Replace(jenkinsUrl + "/job/", "").TrimEnd('/');
 
                 if (job["color"] != null)
                 {
@@ -171,8 +193,9 @@ namespace TelegramBot.Commands
         {
             try
             {
-                using var client = new HttpClient { BaseAddress = new Uri(JENKINS_URL) };
-                var credentials = GetCredentialsForRole(userRole);
+                string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
+                using var client = new HttpClient { BaseAddress = new Uri(jenkinsUrl) };
+                var credentials = EnvironmentVariableLoader.GetCredentialsForRole(userRole);
                 var byteArray = Encoding.ASCII.GetBytes($"{credentials.Username}:{credentials.Password}");
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
@@ -225,13 +248,7 @@ namespace TelegramBot.Commands
 
         private static (string Username, string Password) GetCredentialsForRole(string role)
         {
-            return role.ToLower() switch
-            {
-                "devops" => (DEVOPS_USERNAME, DEVOPS_PASSWORD),
-                "developer" => (DEVELOPER_USERNAME, DEVELOPER_PASSWORD),
-                "tester" => (TESTER_USERNAME,  TESTER_PASSWORD),
-                _ => (DEVELOPER_USERNAME, DEVELOPER_PASSWORD) // Default to developer credentials
-            };
+            return EnvironmentVariableLoader.GetCredentialsForRole(role);
         }
 
         private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()

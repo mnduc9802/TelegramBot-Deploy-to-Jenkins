@@ -75,7 +75,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
         }
 
-        public static async Task JobDeployConfirmationKeyboard(ITelegramBotClient botClient, long chatId, string jobUrl, bool hasParameter, CancellationToken cancellationToken, int? messageId = null)
+        public static async Task JobDeployConfirmationKeyboard(ITelegramBotClient botClient, long chatId, string jobUrlId, bool hasParameter, CancellationToken cancellationToken, int? messageId = null)
         {
             var buttons = new List<InlineKeyboardButton[]>();
 
@@ -84,7 +84,7 @@ namespace TelegramBot.Utilities.DeployUtilities
                 buttons.Add(new[]
                 {
                     InlineKeyboardButton.WithCallbackData("Không", "confirm_job_no"),
-                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"enter_version_{jobUrl}")
+                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"enter_version_{jobUrlId}")
                 });
             }
             else
@@ -92,18 +92,18 @@ namespace TelegramBot.Utilities.DeployUtilities
                 buttons.Add(new[]
                 {
                     InlineKeyboardButton.WithCallbackData("Không", "confirm_job_no"),
-                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_job_yes_{jobUrl}")
+                    InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_job_yes_{jobUrlId}")
                 });
             }
 
             buttons.Add(new[]
             {
-                InlineKeyboardButton.WithCallbackData("Lên lịch", $"schedule_job_{jobUrl}")
+                InlineKeyboardButton.WithCallbackData("Lên lịch", $"schedule_job_{jobUrlId}")
             });
 
             var confirmationKeyboard = new InlineKeyboardMarkup(buttons);
 
-            string message = $"Bạn đã chọn job {jobUrl}. Bạn muốn thực hiện hành động nào?";
+            string message = $"Bạn đã chọn job với ID {jobUrlId}. Bạn muốn thực hiện hành động nào?";
 
             if (messageId.HasValue)
             {
@@ -126,14 +126,23 @@ namespace TelegramBot.Utilities.DeployUtilities
 
         public static async Task HandleConfirmJobYesCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var jobUrl = callbackQuery.Data.Split('_')[3];
+            var jobUrlId = int.Parse(callbackQuery.Data.Split('_')[3]);
             var userId = callbackQuery.From.Id;
             var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
 
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
-            var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole);
-            await DeployCommand.SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken);
+            var jobUrl = await DeployCommand.GetJobUrlFromId(jobUrlId);
+            if (jobUrl != null)
+            {
+                var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole);
+                await DeployCommand.SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
+            }
         }
+
 
         public static async Task HandleConfirmJobNoCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {

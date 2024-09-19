@@ -23,9 +23,11 @@ namespace TelegramBot
         public static string connectionString { get; private set; }
         public static string botToken { get; private set; }
 
+        
         public static async Task Main()
         {
             var envVars = DotEnv.Read(options: new DotEnvOptions(probeForEnv: true));
+            string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
             botToken = envVars["TELEGRAM_BOT_TOKEN"];
             connectionString = envVars["DATABASE_CONNECTION_STRING"];
 
@@ -37,7 +39,6 @@ namespace TelegramBot
             botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions);
 
             ScheduledJobManager.Initialize();
-
             Console.WriteLine("Bot started. Press any key to exit.");
             Console.ReadKey();
         }
@@ -155,6 +156,8 @@ namespace TelegramBot
             var messageId = callbackQuery.Message.MessageId;
             var data = callbackQuery.Data;
 
+            Console.WriteLine($"Received callback query data: {data}");
+
             if (data.StartsWith("deploy_"))
             {
                 await HandleDeployCallback(callbackQuery, cancellationToken);
@@ -193,8 +196,8 @@ namespace TelegramBot
             }
             else if (data.StartsWith("enter_version_"))
             {
-                var jobUrl = data.Substring("enter_version_".Length);
-                versionInputState[callbackQuery.Message.Chat.Id] = jobUrl;
+                var jobUrlId = data.Substring("enter_version_".Length);
+                versionInputState[callbackQuery.Message.Chat.Id] = jobUrlId;
                 await botClient.SendTextMessageAsync(
                     callbackQuery.Message.Chat.Id,
                     "Vui lòng nhập tham số VERSION:",
@@ -228,6 +231,7 @@ namespace TelegramBot
             //Scheduled Job
             else if (data.StartsWith("schedule_job_"))
             {
+                var jobUrlId = data.Substring("schedule_job_".Length);
                 await DeployCommand.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
             }
 
@@ -268,25 +272,37 @@ namespace TelegramBot
             await ClearCommand.HandleClearCallbackAsync(botClient, callbackQuery, cancellationToken);
         }
 
-        private static async Task HandleVersionInputAsync(ITelegramBotClient botClient, Message message, string jobUrl, CancellationToken cancellationToken)
+        private static async Task HandleVersionInputAsync(ITelegramBotClient botClient, Message message, string jobUrlId, CancellationToken cancellationToken)
         {
             var version = message.Text.Trim();
             versionInputState.TryRemove(message.Chat.Id, out _);
 
             var userRole = await ProjectsCommand.GetUserRoleAsync(message.From.Id);
-            var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole, version);
-            await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
+            var jobUrl = await DeployCommand.GetJobUrlFromId(int.Parse(jobUrlId));
+            if (jobUrl != null)
+            {
+                var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole, version);
+                await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
+            }
         }
 
         private static async Task HandleDeployCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             var data = callbackQuery.Data.Substring(7);
+            Console.WriteLine($"Callback data: {data}");
+
             if (int.TryParse(data, out int projectIndex))
             {
+                Console.WriteLine($"Project Index: {projectIndex}");
                 await DeployConfirmation.DeployConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
             }
             else
             {
+                Console.WriteLine("Delegating to DeployCommand");
                 await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
         }
@@ -294,10 +310,26 @@ namespace TelegramBot
         private static async Task ShowProjectsKeyboard(long chatId, long userId, CancellationToken cancellationToken)
         {
             var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
+            Console.WriteLine($"Fetching Jenkins projects for userId: {userId} with role: {userRole}");
+
             var projects = await ProjectsCommand.GetJenkinsProjectsAsync(userId, userRole);
+
+            if (projects == null || !projects.Any())
+            {
+                Console.WriteLine("No projects found for the user.");
+                await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "Không tìm thấy dự án nào.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            Console.WriteLine($"Projects retrieved: {string.Join(", ", projects)}");
+
             FolderPaginator.chatState[chatId] = projects;
             await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
         }
+
 
         private static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {

@@ -8,31 +8,12 @@ using System.Data;
 using TelegramBot.DbContext;
 using TelegramBot.Models;
 using Telegram.Bot.Types.ReplyMarkups;
+using TelegramBot.Utilities;
 
 namespace TelegramBot.Commands
 {
     public class ProjectsCommand
     {
-        private static readonly string JENKINS_URL;
-        private static readonly string DEVOPS_USERNAME;
-        private static readonly string DEVOPS_PASSWORD;
-        private static readonly string DEVELOPER_USERNAME;
-        private static readonly string DEVELOPER_PASSWORD;
-        private static readonly string TESTER_USERNAME;
-        private static readonly string TESTER_PASSWORD;
-
-        static ProjectsCommand()
-        {
-            DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
-            JENKINS_URL = Environment.GetEnvironmentVariable("JENKINS_URL");
-            DEVOPS_USERNAME = Environment.GetEnvironmentVariable("DEVOPS_USERNAME");
-            DEVOPS_PASSWORD = Environment.GetEnvironmentVariable("DEVOPS_PASSWORD");
-            DEVELOPER_USERNAME = Environment.GetEnvironmentVariable("DEVELOPER_USERNAME");
-            DEVELOPER_PASSWORD = Environment.GetEnvironmentVariable("DEVELOPER_PASSWORD");
-            TESTER_USERNAME = Environment.GetEnvironmentVariable("TESTER_USERNAME");
-            TESTER_PASSWORD = Environment.GetEnvironmentVariable("TESTER_PASSWORD");
-        }
-
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
             try
@@ -77,34 +58,15 @@ namespace TelegramBot.Commands
         {
             try
             {
+                string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
                 using (var client = new HttpClient())
                 {
-                    client.BaseAddress = new Uri(JENKINS_URL);
-                    string username, password;
+                    client.BaseAddress = new Uri(jenkinsUrl);
+                    var credentials = EnvironmentVariableLoader.GetCredentialsForRole(userRole);
 
                     Console.WriteLine($"Received role: {userRole} for user ID: {userId}");
 
-                    if (string.Equals(userRole, "devops", StringComparison.OrdinalIgnoreCase))
-                    {
-                        username = DEVOPS_USERNAME;
-                        password = DEVOPS_PASSWORD;
-                    }
-                    else if (string.Equals(userRole, "developer", StringComparison.OrdinalIgnoreCase))
-                    {
-                        username = DEVELOPER_USERNAME;
-                        password = DEVELOPER_PASSWORD;
-                    }
-                    else if (string.Equals(userRole, "tester", StringComparison.OrdinalIgnoreCase))
-                    {
-                        username = TESTER_USERNAME;
-                        password = TESTER_PASSWORD;
-                    }
-                    else
-                    {
-                        throw new UnauthorizedAccessException($"User with role '{userRole}' does not have permission to access Jenkins projects.");
-                    }
-
-                    var byteArray = Encoding.ASCII.GetBytes($"{username}:{password}");
+                    var byteArray = Encoding.ASCII.GetBytes($"{credentials.Username}:{credentials.Password}");
                     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
                     var response = await client.GetAsync("/api/json?tree=jobs[name]");
