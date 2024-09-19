@@ -110,10 +110,11 @@ namespace TelegramBot.Commands
 
             if (callbackQuery.Data.StartsWith("deploy_"))
             {
-                var jobUrlId = int.Parse(callbackQuery.Data.Replace("deploy_", ""));
-                var jobUrl = await GetJobUrlFromId(jobUrlId);
+                var shortId = callbackQuery.Data.Replace("deploy_", "");
+                var jobUrl = JobKeyboardManager.GetJobUrl(shortId);
                 if (jobUrl != null)
                 {
+                    var jobUrlId = await GetOrCreateJobUrlId(jobUrl);
                     bool hasParameter = jobUrl.EndsWith("_parameter");
                     await DeployConfirmation.JobDeployConfirmationKeyboard(
                         botClient,
@@ -128,7 +129,7 @@ namespace TelegramBot.Commands
                 {
                     await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
                 }
-            }
+            } 
             else if (callbackQuery.Data.StartsWith("confirm_job_yes_"))
             {
                 var jobUrl = callbackQuery.Data.Replace("confirm_job_yes_", "");

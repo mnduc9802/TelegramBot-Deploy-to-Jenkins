@@ -14,7 +14,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             // Job buttons
             foreach (var job in jobs)
             {
-                var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                var shortId = GenerateUniqueShortId();
                 jobUrlMap[shortId] = job.Url;
                 keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData(job.Name, $"deploy_{shortId}") });
             }
@@ -37,11 +37,25 @@ namespace TelegramBot.Utilities.DeployUtilities
             {
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("📄", "back_to_jobs"));
             }
-            
+
             keyboardButtons.Add(navigationSearchAndBackButtons);
 
             return new InlineKeyboardMarkup(keyboardButtons);
         }
 
+        private static string GenerateUniqueShortId()
+        {
+            string shortId;
+            do
+            {
+                shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+            } while (jobUrlMap.ContainsKey(shortId));
+            return shortId;
+        }
+
+        public static string GetJobUrl(string shortId)
+        {
+            return jobUrlMap.TryGetValue(shortId, out var url) ? url : null;
+        }
     }
 }
