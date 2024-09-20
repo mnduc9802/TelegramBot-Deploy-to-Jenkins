@@ -393,8 +393,12 @@ namespace TelegramBot.Commands
         {
             string parameter = message.Text.Trim();
             string[] jobInfo = Program.schedulingState[message.Chat.Id].Split('|');
-            string jobUrl = jobInfo[0];
+            string[] jobParts = jobInfo[0].Split('_');
+            string jobUrlId = jobParts[2]; // This should be the correct job ID
             DateTime scheduledTime = DateTime.Parse(jobInfo[1]);
+
+            // Fetch the correct job URL using the jobUrlId
+            string jobUrl = await GetJobUrlFromId(int.Parse(jobUrlId));
 
             await HandleScheduleInputAsync(botClient, message, jobUrl, scheduledTime, parameter, cancellationToken);
         }
@@ -406,16 +410,40 @@ namespace TelegramBot.Commands
             string sql;
             Dictionary<string, object> parameters;
 
-            sql = "INSERT INTO jobs (job_name, url, scheduled_time, created_at, user_id, parameter) VALUES (@jobName, @url, @scheduledTime, @createdAt, @userId, @parameter)";
+            // Check if the job already exists
+            sql = "SELECT id FROM jobs WHERE url = @url AND user_id = @userId";
             parameters = new Dictionary<string, object>
             {
-                { "@jobName", jobName },
                 { "@url", jobUrl },
-                { "@scheduledTime", scheduledTime },
-                { "@createdAt", DateTime.Now },
-                { "@userId", message.From.Id },
-                { "@parameter", parameter ?? (object)DBNull.Value }
+                { "@userId", message.From.Id }
             };
+            var existingJobId = await dbConnection.ExecuteScalarAsync(sql, parameters);
+
+            if (existingJobId != null)
+            {
+                // Update existing job
+                sql = "UPDATE jobs SET scheduled_time = @scheduledTime, parameter = @parameter WHERE id = @jobId";
+                parameters = new Dictionary<string, object>
+                {
+                    { "@scheduledTime", scheduledTime },
+                    { "@parameter", parameter ?? (object)DBNull.Value },
+                    { "@jobId", existingJobId }
+                };
+            }
+            else
+            {
+                // Insert new job
+                sql = "INSERT INTO jobs (job_name, url, scheduled_time, created_at, user_id, parameter) VALUES (@jobName, @url, @scheduledTime, @createdAt, @userId, @parameter)";
+                parameters = new Dictionary<string, object>
+                {
+                    { "@jobName", jobName },
+                    { "@url", jobUrl },
+                    { "@scheduledTime", scheduledTime },
+                    { "@createdAt", DateTime.Now },
+                    { "@userId", message.From.Id },
+                    { "@parameter", parameter ?? (object)DBNull.Value }
+                };
+            }
 
             await dbConnection.ExecuteNonQueryAsync(sql, parameters);
 
@@ -430,8 +458,6 @@ namespace TelegramBot.Commands
 
             Program.schedulingState.TryRemove(message.Chat.Id, out _);
         }
-
-
 
         private static string NormalizeJenkinsPath(string projectPath)
         {
