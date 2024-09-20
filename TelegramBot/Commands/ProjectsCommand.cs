@@ -93,7 +93,7 @@ namespace TelegramBot.Commands
         private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()
         {
             var dbConnection = new DatabaseConnection(Program.connectionString);
-            var sql = "SELECT job_name, scheduled_time, user_id FROM scheduled_jobs ORDER BY scheduled_time";
+            var sql = "SELECT job_name, scheduled_time, user_id FROM jobs WHERE scheduled_time IS NOT NULL ORDER BY scheduled_time";
             var dataTable = await dbConnection.ExecuteReaderAsync(sql);
             var scheduledJobs = new List<ScheduledJob>();
             foreach (DataRow row in dataTable.Rows)
@@ -205,7 +205,7 @@ namespace TelegramBot.Commands
         public static async Task DeleteJob(ITelegramBotClient botClient, long chatId, int messageId, string jobName, CancellationToken cancellationToken)
         {
             var dbConnection = new DatabaseConnection(Program.connectionString);
-            var sql = "DELETE FROM scheduled_jobs WHERE job_name = @jobName";
+            var sql = "DELETE FROM jobs WHERE job_name = @jobName";
             var parameters = new Dictionary<string, object> { { "@jobName", jobName } };
 
             await dbConnection.ExecuteNonQueryAsync(sql, parameters);
@@ -281,7 +281,7 @@ namespace TelegramBot.Commands
 
             // Cập nhật thời gian lên lịch vào database
             var dbConnection = new DatabaseConnection(Program.connectionString);
-            string sql = "UPDATE scheduled_jobs SET scheduled_time = @scheduledTime WHERE job_name = @jobName AND user_id = @userId";
+            string sql = "UPDATE jobs SET scheduled_time = @scheduledTime WHERE job_name = @jobName AND user_id = @userId";
             var parameters = new Dictionary<string, object>
             {
                 { "@scheduledTime", scheduledTime },

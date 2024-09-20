@@ -93,24 +93,17 @@ namespace TelegramBot
 
             if (Program.schedulingState.TryGetValue(message.Chat.Id, out string state))
             {
-                if (state.StartsWith("edit_"))
+                if (state.StartsWith("schedule_time_"))
                 {
-                    // Đây là trường hợp chỉnh sửa lên lịch
-                    await ProjectsCommand.HandleEditJobTimeInputAsync(botClient, message, cancellationToken);
+                    await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
                 }
-                else
+                else if (state.StartsWith("schedule_version_"))
                 {
-                    // Đây là trường hợp tạo mới lên lịch
-                    if (state.Contains("|"))
-                    {
-                        // Xử lý input tham số
-                        await DeployCommand.HandleScheduleParameterInputAsync(botClient, message, cancellationToken);
-                    }
-                    else
-                    {
-                        // Xử lý input thời gian
-                        await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
-                    }
+                    await DeployCommand.HandleScheduleParameterInputAsync(botClient, message, cancellationToken);
+                }
+                else if (state.StartsWith("edit_"))
+                {
+                    await ProjectsCommand.HandleEditJobTimeInputAsync(botClient, message, cancellationToken);
                 }
                 return;
             }
@@ -231,7 +224,6 @@ namespace TelegramBot
             //Scheduled Job
             else if (data.StartsWith("schedule_job_"))
             {
-                var jobUrlId = data.Substring("schedule_job_".Length);
                 await DeployCommand.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
             }
 
@@ -279,8 +271,11 @@ namespace TelegramBot
 
             var userRole = await ProjectsCommand.GetUserRoleAsync(message.From.Id);
             var jobUrl = await DeployCommand.GetJobUrlFromId(int.Parse(jobUrlId));
-            if (jobUrl != null)
+            if (!string.IsNullOrEmpty(jobUrl))
             {
+                // Update or create the job with the parameter
+                await DeployCommand.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
+
                 var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole, version);
                 await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
             }

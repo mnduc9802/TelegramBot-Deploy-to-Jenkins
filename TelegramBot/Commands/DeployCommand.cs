@@ -14,39 +14,61 @@ namespace TelegramBot.Commands
     public class DeployCommand
     {
 
-        private static async Task<int> GetOrCreateJobUrlId(string url)
+        public static async Task<int> GetOrCreateJobUrlId(string url, long userId, string parameter = null)
         {
             var dbConnection = new DatabaseConnection(Program.connectionString);
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
 
-            // Trích xuất phần path từ URL đầy đủ
-            Uri uri = new Uri(url);
-            string path = uri.AbsolutePath.TrimStart('/');
+            // Xử lý URL một cách an toàn hơn
+            string path = url;
+            if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
+            {
+                path = uri.AbsolutePath.TrimStart('/');
+            }
 
-            // Loại bỏ "job/" từ đầu path nếu có
             if (path.StartsWith("job/", StringComparison.OrdinalIgnoreCase))
             {
                 path = path.Substring(4);
             }
 
-            var selectSql = "SELECT id FROM job_urls WHERE url = @url";
+            var selectSql = "SELECT id FROM jobs WHERE url = @url";
             var selectParams = new Dictionary<string, object> { { "@url", path } };
             var result = await dbConnection.ExecuteScalarAsync(selectSql, selectParams);
+
             if (result != null)
             {
-                return Convert.ToInt32(result);
+                int jobId = Convert.ToInt32(result);
+                // Job exists, update the created_at timestamp and parameter
+                var updateSql = "UPDATE jobs SET created_at = @created_at, parameter = @parameter WHERE id = @id";
+                var updateParams = new Dictionary<string, object>
+                {
+                    { "@created_at", DateTime.Now },
+                    { "@id", jobId },
+                    { "@parameter", parameter ?? (object)DBNull.Value }
+                };
+                await dbConnection.ExecuteNonQueryAsync(updateSql, updateParams);
+                return jobId;
             }
 
-            var insertSql = "INSERT INTO job_urls (url) VALUES (@url) RETURNING id";
-            var insertParams = new Dictionary<string, object> { { "@url", path } };
+            // Job doesn't exist, create a new one
+            var insertSql = "INSERT INTO jobs (job_name, url, user_id, created_at, parameter) VALUES (@job_name, @url, @user_id, @created_at, @parameter) RETURNING id";
+            var insertParams = new Dictionary<string, object>
+            {
+                { "@job_name", path },
+                { "@url", path },
+                { "@user_id", userId },
+                { "@created_at", DateTime.Now },
+                { "@parameter", parameter ?? (object)DBNull.Value }
+            };
             result = await dbConnection.ExecuteScalarAsync(insertSql, insertParams);
             return Convert.ToInt32(result);
         }
 
+
         public static async Task<string> GetJobUrlFromId(int id)
         {
             var dbConnection = new DatabaseConnection(Program.connectionString);
-            var sql = "SELECT url FROM job_urls WHERE id = @id";
+            var sql = "SELECT url FROM jobs WHERE id = @id";
             var parameters = new Dictionary<string, object> { { "@id", id } };
             var result = await dbConnection.ExecuteScalarAsync(sql, parameters);
 
@@ -78,7 +100,7 @@ namespace TelegramBot.Commands
             else if (jobs.Count == 1)
             {
                 await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
-                var jobUrlId = await GetOrCreateJobUrlId(jobs[0].Url);
+                var jobUrlId = await GetOrCreateJobUrlId(jobs[0].Url, userId);
                 await DeployConfirmation.JobDeployConfirmationKeyboard(
                     botClient,
                     message.Chat.Id,
@@ -114,7 +136,7 @@ namespace TelegramBot.Commands
                 var jobUrl = JobKeyboardManager.GetJobUrl(shortId);
                 if (jobUrl != null)
                 {
-                    var jobUrlId = await GetOrCreateJobUrlId(jobUrl);
+                    var jobUrlId = await GetOrCreateJobUrlId(jobUrl, userId);
                     bool hasParameter = jobUrl.EndsWith("_parameter");
                     await DeployConfirmation.JobDeployConfirmationKeyboard(
                         botClient,
@@ -129,7 +151,7 @@ namespace TelegramBot.Commands
                 {
                     await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
                 }
-            } 
+            }
             else if (callbackQuery.Data.StartsWith("confirm_job_yes_"))
             {
                 var jobUrl = callbackQuery.Data.Replace("confirm_job_yes_", "");
@@ -255,7 +277,7 @@ namespace TelegramBot.Commands
         private static async Task<List<ScheduledJob>> GetScheduledJobsAsync()
         {
             var dbConnection = new DatabaseConnection(Program.connectionString);
-            var sql = "SELECT job_name, scheduled_time, created_at FROM scheduled_jobs ORDER BY scheduled_time";
+            var sql = "SELECT job_name, scheduled_time, created_at FROM jobs WHERE scheduled_time IS NOT NULL ORDER BY scheduled_time";
             var dataTable = await dbConnection.ExecuteReaderAsync(sql);
 
             var scheduledJobs = new List<ScheduledJob>();
@@ -272,44 +294,33 @@ namespace TelegramBot.Commands
             return scheduledJobs;
         }
 
+
         public static async Task HandleScheduleJobAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var jobUrl = callbackQuery.Data.Replace("schedule_job_", "");
+            var jobUrlId = callbackQuery.Data.Replace("schedule_job_", "");
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
 
+            await RequestScheduleTimeAsync(botClient, callbackQuery.Message.Chat.Id, jobUrlId, cancellationToken);
+        }
+
+
+        private static async Task RequestScheduleTimeAsync(ITelegramBotClient botClient, long chatId, string jobUrlId, CancellationToken cancellationToken)
+        {
             var scheduledJobs = await GetScheduledJobsAsync();
 
-            string jobList;
-
-            if (scheduledJobs.Any())
-            {
-                scheduledJobs = scheduledJobs.OrderBy(j => j.ScheduledTime).ToList();
-                jobList = string.Join("\n", scheduledJobs.Select((j, index) => $"{index + 1}. {j.JobName} - {j.ScheduledTime:dd/MM/yyyy HH:mm}"));
-            }
-            else
-            {
-                jobList = "Chưa có job nào được lên lịch.";
-            }
+            string jobList = scheduledJobs.Any()
+                ? string.Join("\n", scheduledJobs.Select((j, index) => $"{index + 1}. {j.JobName} - {j.ScheduledTime:dd/MM/yyyy HH:mm}"))
+                : "Chưa có job nào được lên lịch.";
 
             var message = $"*Các job đang được lên lịch:*\n\n{jobList}\n\nVui lòng nhập thời gian bạn muốn lên lịch triển khai job (định dạng: DD/MM/YYYY HH:mm)";
 
             await botClient.SendTextMessageAsync(
-                callbackQuery.Message.Chat.Id,
+                chatId,
                 message,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                 cancellationToken: cancellationToken);
 
-            Program.schedulingState[callbackQuery.Message.Chat.Id] = jobUrl;
-        }
-
-        private static async Task RequestScheduleTimeAsync(ITelegramBotClient botClient, long chatId, string jobUrl, CancellationToken cancellationToken)
-        {
-            await botClient.SendTextMessageAsync(
-                chatId,
-                "Vui lòng nhập thời gian bạn muốn lên lịch triển khai job (định dạng: DD/MM/YYYY HH:mm)",
-                cancellationToken: cancellationToken);
-
-            Program.schedulingState[chatId] = jobUrl;
+            Program.schedulingState[chatId] = $"schedule_time_{jobUrlId}";
         }
 
         public static async Task HandleScheduleTimeInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
@@ -332,48 +343,51 @@ namespace TelegramBot.Commands
             {
                 scheduledTime = DateTime.Now.AddMinutes(30);
             }
-            else
+            else if (DateTime.TryParseExact(messageText, "dd/MM/yyyy HH:mm", null, System.Globalization.DateTimeStyles.None, out scheduledTime))
             {
-                string[] parts = messageText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                string timeString = string.Join(" ", parts.Skip(parts[0].StartsWith("@") ? 1 : 0));
-
-                if (DateTime.TryParseExact(timeString, "dd/MM/yyyy HH:mm", null, System.Globalization.DateTimeStyles.None, out scheduledTime))
-                {
-                    if (scheduledTime <= DateTime.Now)
-                    {
-                        await botClient.SendTextMessageAsync(
-                            message.Chat.Id,
-                            "Thời gian lên lịch phải là trong tương lai. Vui lòng thử lại.",
-                            cancellationToken: cancellationToken);
-                        return;
-                    }
-                }
-                else
+                if (scheduledTime <= DateTime.Now)
                 {
                     await botClient.SendTextMessageAsync(
                         message.Chat.Id,
-                        "Định dạng thời gian không hợp lệ. Vui lòng nhập lại theo định dạng DD/MM/YYYY HH:mm hoặc nhập 'df' để đặt lịch sau 30 phút.",
+                        "Thời gian lên lịch phải là trong tương lai. Vui lòng thử lại.",
                         cancellationToken: cancellationToken);
                     return;
                 }
             }
+            else
+            {
+                await botClient.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Định dạng thời gian không hợp lệ. Vui lòng nhập lại theo định dạng DD/MM/YYYY HH:mm hoặc nhập 'df' để đặt lịch sau 30 phút.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
 
-            string jobUrl = Program.schedulingState[message.Chat.Id];
+            string[] parts = Program.schedulingState[message.Chat.Id].Split('_');
+            string jobUrlId = parts[2];
+
+            var jobUrl = await GetJobUrlFromId(int.Parse(jobUrlId));
             bool hasParameter = jobUrl.EndsWith("_parameter");
 
             if (hasParameter)
             {
-                await botClient.SendTextMessageAsync(
-                    message.Chat.Id,
-                    "Vui lòng nhập tham số VERSION:",
-                    cancellationToken: cancellationToken);
-                Program.schedulingState[message.Chat.Id] = $"{jobUrl}|{scheduledTime}";
+                await RequestScheduleVersionAsync(botClient, message.Chat.Id, jobUrlId, scheduledTime, cancellationToken);
             }
             else
             {
                 await HandleScheduleInputAsync(botClient, message, jobUrl, scheduledTime, null, cancellationToken);
             }
         }
+        private static async Task RequestScheduleVersionAsync(ITelegramBotClient botClient, long chatId, string jobUrlId, DateTime scheduledTime, CancellationToken cancellationToken)
+        {
+            await botClient.SendTextMessageAsync(
+                chatId,
+                "Vui lòng nhập tham số VERSION cho job được lên lịch:",
+                cancellationToken: cancellationToken);
+
+            Program.schedulingState[chatId] = $"schedule_version_{jobUrlId}|{scheduledTime:yyyy-MM-dd HH:mm:ss}";
+        }
+
 
         public static async Task HandleScheduleParameterInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
@@ -392,29 +406,16 @@ namespace TelegramBot.Commands
             string sql;
             Dictionary<string, object> parameters;
 
-            if (parameter != null)
+            sql = "INSERT INTO jobs (job_name, url, scheduled_time, created_at, user_id, parameter) VALUES (@jobName, @url, @scheduledTime, @createdAt, @userId, @parameter)";
+            parameters = new Dictionary<string, object>
             {
-                sql = "INSERT INTO scheduled_jobs (job_name, scheduled_time, created_at, user_id, parameter) VALUES (@jobName, @scheduledTime, @createdAt, @userId, @parameter)";
-                parameters = new Dictionary<string, object>
-                {
-                    { "@jobName", jobName },
-                    { "@scheduledTime", scheduledTime },
-                    { "@createdAt", DateTime.Now },
-                    { "@userId", message.From.Id },
-                    { "@parameter", parameter }
-                };
-            }
-            else
-            {
-                sql = "INSERT INTO scheduled_jobs (job_name, scheduled_time, created_at, user_id) VALUES (@jobName, @scheduledTime, @createdAt, @userId)";
-                parameters = new Dictionary<string, object>
-                {
-                    { "@jobName", jobName },
-                    { "@scheduledTime", scheduledTime },
-                    { "@createdAt", DateTime.Now },
-                    { "@userId", message.From.Id }
-                };
-            }
+                { "@jobName", jobName },
+                { "@url", jobUrl },
+                { "@scheduledTime", scheduledTime },
+                { "@createdAt", DateTime.Now },
+                { "@userId", message.From.Id },
+                { "@parameter", parameter ?? (object)DBNull.Value }
+            };
 
             await dbConnection.ExecuteNonQueryAsync(sql, parameters);
 
@@ -429,6 +430,8 @@ namespace TelegramBot.Commands
 
             Program.schedulingState.TryRemove(message.Chat.Id, out _);
         }
+
+
 
         private static string NormalizeJenkinsPath(string projectPath)
         {

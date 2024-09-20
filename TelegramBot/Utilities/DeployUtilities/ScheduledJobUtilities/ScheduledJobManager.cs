@@ -24,7 +24,7 @@ namespace TelegramBot.Utilities
             {
                 var now = DateTime.Now;
                 var dbConnection = new DatabaseConnection(Program.connectionString);
-                var sql = "SELECT job_name, scheduled_time, user_id, parameter FROM scheduled_jobs WHERE scheduled_time <= @now";
+                var sql = "SELECT job_name, scheduled_time, user_id, parameter FROM jobs WHERE scheduled_time <= @now";
                 var parameters = new Dictionary<string, object> { { "@now", now } };
                 var dataTable = await dbConnection.ExecuteReaderAsync(sql, parameters);
 
@@ -38,7 +38,7 @@ namespace TelegramBot.Utilities
 
                     await ExecuteScheduledJob(jobName, userId, parameter);
 
-                    var deleteSql = "DELETE FROM scheduled_jobs WHERE job_name = @jobName AND scheduled_time = @scheduledTime";
+                    var deleteSql = "DELETE FROM jobs WHERE job_name = @jobName AND scheduled_time = @scheduledTime";
                     var deleteParameters = new Dictionary<string, object>
                     {
                         { "@jobName", jobName },
