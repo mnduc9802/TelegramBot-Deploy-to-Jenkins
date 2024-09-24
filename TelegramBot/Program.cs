@@ -91,7 +91,7 @@ namespace TelegramBot
                 return;
             }
 
-            if (Program.schedulingState.TryGetValue(message.Chat.Id, out string state))
+            if (schedulingState.TryGetValue(message.Chat.Id, out string state))
             {
                 if (state.StartsWith("schedule_time_"))
                 {

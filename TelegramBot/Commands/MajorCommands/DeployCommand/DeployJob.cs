@@ -14,7 +14,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
     {
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
-            var userId = message.From.Id;
+            var userId = message.From?.Id ?? throw new ArgumentNullException(nameof(message.From.Id));
             var userRole = await CredentialService.GetUserRoleAsync(userId);
 
             var initialMessage = await botClient.SendTextMessageAsync(
@@ -71,7 +71,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             return await GetJobsRecursivelyAsync(client, folderPath, folderPath);
         }
 
-        public static async Task<bool> DeployProjectAsync(string projectPath, string userRole, string parameter = null)
+        public static async Task<bool> DeployProjectAsync(string projectPath, string userRole, string? parameter = null)
         {
             try
             {
@@ -91,7 +91,13 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 }
 
                 var crumbJson = JObject.Parse(await crumbResponse.Content.ReadAsStringAsync());
-                client.DefaultRequestHeaders.Add(crumbJson["crumbRequestField"].ToString(), crumbJson["crumb"].ToString());
+                var crumbRequestField = crumbJson["crumbRequestField"]?.ToString();
+                var crumb = crumbJson["crumb"]?.ToString();
+
+                if (crumbRequestField != null && crumb != null)
+                {
+                    client.DefaultRequestHeaders.Add(crumbRequestField, crumb);
+                }
 
                 var url = $"/job/{projectPath.Replace("/", "/")}/build";
                 if (!string.IsNullOrEmpty(parameter))
@@ -125,6 +131,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
         }
 
+
         private static async Task<List<Job>> GetJobsRecursivelyAsync(HttpClient client, string currentPath, string rootPath)
         {
             var result = new List<Job>();
@@ -136,10 +143,15 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             var content = await response.Content.ReadAsStringAsync();
             var json = JObject.Parse(content);
 
-            foreach (var job in json["jobs"])
+            var jobs = json["jobs"] as JArray;
+            if (jobs == null) return result;
+
+            foreach (var job in jobs)
             {
-                var jobName = job["name"].ToString();
-                var jobUrl = job["url"].ToString();
+                var jobName = job["name"]?.ToString();
+                var jobUrl = job["url"]?.ToString();
+                if (jobName == null || jobUrl == null) continue;
+
                 string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
                 var relativeUrl = jobUrl.Replace(jenkinsUrl + "/job/", "").TrimEnd('/');
 

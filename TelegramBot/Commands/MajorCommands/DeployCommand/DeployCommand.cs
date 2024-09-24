@@ -15,11 +15,17 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
+            if (callbackQuery.Message == null)
+            {
+                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Invalid callback query", cancellationToken: cancellationToken);
+                return;
+            }
+
             var chatId = callbackQuery.Message.Chat.Id;
-            var userId = callbackQuery.From.Id;
+            var userId = callbackQuery.From?.Id ?? 0;
             var userRole = await CredentialService.GetUserRoleAsync(userId);
 
-            if (callbackQuery.Data.StartsWith("deploy_"))
+            if (callbackQuery.Data?.StartsWith("deploy_") == true)
             {
                 var shortId = callbackQuery.Data.Replace("deploy_", "");
                 var jobUrl = JobKeyboardManager.GetJobUrl(shortId);
@@ -41,7 +47,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                     await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
                 }
             }
-            else if (callbackQuery.Data.StartsWith("confirm_job_yes_"))
+            else if (callbackQuery.Data?.StartsWith("confirm_job_yes_") == true)
             {
                 var jobUrl = callbackQuery.Data.Replace("confirm_job_yes_", "");
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
@@ -53,7 +59,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
                 await botClient.SendTextMessageAsync(chatId, "Yêu cầu triển khai job đã bị hủy.", cancellationToken: cancellationToken);
             }
-            else if (callbackQuery.Data.StartsWith("schedule_job_"))
+            else if (callbackQuery.Data?.StartsWith("schedule_job_") == true)
             {
                 await ScheduleJob.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
             }
@@ -63,9 +69,10 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
         }
 
+
         public static async Task HandleDeployCallback(ITelegramBotClient botClient,CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var data = callbackQuery.Data.Substring(7);
+            var data = callbackQuery.Data?.Substring(7);
             Console.WriteLine($"Callback data: {data}");
 
             if (int.TryParse(data, out int projectIndex))

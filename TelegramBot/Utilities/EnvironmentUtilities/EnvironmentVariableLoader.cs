@@ -1,4 +1,5 @@
 ﻿using dotenv.net;
+using System;
 
 namespace TelegramBot.Utilities.EnvironmentUtilities
 {
@@ -8,7 +9,7 @@ namespace TelegramBot.Utilities.EnvironmentUtilities
         {
             DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
             var jenkinsUrl = Environment.GetEnvironmentVariable("JENKINS_URL");
-            return jenkinsUrl;
+            return jenkinsUrl ?? throw new InvalidOperationException("JENKINS_URL environment variable is not set.");
         }
 
         public static (string Username, string Password) GetCredentialsForRole(string role)
@@ -16,11 +17,24 @@ namespace TelegramBot.Utilities.EnvironmentUtilities
             DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
             return role.ToLower() switch
             {
-                "devops" => (Environment.GetEnvironmentVariable("DEVOPS_USERNAME"), Environment.GetEnvironmentVariable("DEVOPS_PASSWORD")),
-                "developer" => (Environment.GetEnvironmentVariable("DEVELOPER_USERNAME"), Environment.GetEnvironmentVariable("DEVELOPER_PASSWORD")),
-                "tester" => (Environment.GetEnvironmentVariable("TESTER_USERNAME"), Environment.GetEnvironmentVariable("TESTER_PASSWORD")),
-                _ => (Environment.GetEnvironmentVariable("DEVELOPER_USERNAME"), Environment.GetEnvironmentVariable("DEVELOPER_PASSWORD")) // Default to developer credentials
+                "devops" => GetCredentials("DEVOPS"),
+                "developer" => GetCredentials("DEVELOPER"),
+                "tester" => GetCredentials("TESTER"),
+                _ => GetCredentials("DEVELOPER") // Default to developer credentials
             };
+        }
+
+        private static (string Username, string Password) GetCredentials(string prefix)
+        {
+            var username = Environment.GetEnvironmentVariable($"{prefix}_USERNAME");
+            var password = Environment.GetEnvironmentVariable($"{prefix}_PASSWORD");
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                throw new InvalidOperationException($"{prefix} credentials are not properly set in the environment variables.");
+            }
+
+            return (username, password);
         }
     }
 }
