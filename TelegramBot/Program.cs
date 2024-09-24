@@ -121,7 +121,7 @@ namespace TelegramBot
                         await HelloCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/deploy":
-                        await ShowProjectsKeyboard(chatId, message.From.Id, cancellationToken);
+                        await DeployCommand.ShowProjectsKeyboard(botClient, chatId, message.From.Id, cancellationToken);
                         break;
                     case "/projects":
                         await ProjectCommand.ExecuteAsync(botClient, message, cancellationToken);
@@ -153,16 +153,11 @@ namespace TelegramBot
 
             if (data.StartsWith("deploy_"))
             {
-                await HandleDeployCallback(callbackQuery, cancellationToken);
+                await DeployCommand.HandleDeployCallback(botClient, callbackQuery, cancellationToken);
             }
             else if (data.StartsWith("page_"))
             {
                 await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
-            }
-            else if (data == "start_again")
-            {
-                await HandleDeployCallback(callbackQuery, cancellationToken);
-                await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
             }
             else if (data == "show_projects")
             {
@@ -205,7 +200,7 @@ namespace TelegramBot
             }
             else if (data == "back_to_folder")
             {
-                await ShowProjectsKeyboard(chatId, callbackQuery.From.Id, cancellationToken);
+                await DeployCommand.ShowProjectsKeyboard(botClient, chatId, callbackQuery.From.Id, cancellationToken);
                 await botClient.DeleteMessageAsync(chatId, messageId, cancellationToken);
             }
             else if (data == "back_to_jobs")
@@ -284,45 +279,6 @@ namespace TelegramBot
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
             }
         }
-
-        private static async Task HandleDeployCallback(CallbackQuery callbackQuery, CancellationToken cancellationToken)
-        {
-            var data = callbackQuery.Data.Substring(7);
-            Console.WriteLine($"Callback data: {data}");
-
-            if (int.TryParse(data, out int projectIndex))
-            {
-                Console.WriteLine($"Project Index: {projectIndex}");
-                await DeployConfirmation.DeployConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
-            }
-            else
-            {
-                Console.WriteLine("Delegating to DeployCommand");
-                await DeployCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
-            }
-        }
-
-        private static async Task ShowProjectsKeyboard(long chatId, long userId, CancellationToken cancellationToken)
-        {
-            var userRole = await CredentialService.GetUserRoleAsync(userId);
-            Console.WriteLine($"Fetching Jenkins projects for userId: {userId} with role: {userRole}");
-
-            var projects = await JenkinsProject.GetJenkinsProjectsAsync(userId, userRole);
-
-            if (projects == null || !projects.Any())
-            {
-                Console.WriteLine("No projects found for the user.");
-                await botClient.SendTextMessageAsync(
-                    chatId: chatId,
-                    text: "Không tìm thấy dự án nào.",
-                    cancellationToken: cancellationToken);
-                return;
-            }
-
-            FolderPaginator.chatState[chatId] = projects;
-            await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
-        }
-
 
         private static Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {

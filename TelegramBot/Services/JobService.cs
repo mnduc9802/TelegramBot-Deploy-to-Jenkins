@@ -51,20 +51,26 @@ namespace TelegramBot.Services
             var dbConnection = new DatabaseConnection(Program.connectionString);
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
 
-            // Xử lý URL một cách an toàn hơn
-            string path = url;
+            // Process the URL more safely
+            string fullPath = url;
+            string jobName = url;
             if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
             {
-                path = uri.AbsolutePath.TrimStart('/');
+                fullPath = uri.AbsolutePath.TrimStart('/');
+                jobName = uri.Segments.Last().TrimEnd('/');
+            }
+            else if (url.Contains("/"))
+            {
+                jobName = url.Split('/').Last().TrimEnd('/');
             }
 
-            if (path.StartsWith("job/", StringComparison.OrdinalIgnoreCase))
+            if (fullPath.StartsWith("job/", StringComparison.OrdinalIgnoreCase))
             {
-                path = path.Substring(4);
+                fullPath = fullPath.Substring(4);
             }
 
             var selectSql = "SELECT id FROM jobs WHERE url = @url";
-            var selectParams = new Dictionary<string, object> { { "@url", path } };
+            var selectParams = new Dictionary<string, object> { { "@url", fullPath } };
             var result = await dbConnection.ExecuteScalarAsync(selectSql, selectParams);
 
             if (result != null)
@@ -87,8 +93,8 @@ namespace TelegramBot.Services
             var insertSql = "INSERT INTO jobs (job_name, url, user_id, created_at, parameter) VALUES (@job_name, @url, @user_id, @created_at, @parameter) RETURNING id";
             var insertParams = new Dictionary<string, object>
             {
-                { "@job_name", path },
-                { "@url", path },
+                { "@job_name", jobName },
+                { "@url", fullPath },
                 { "@user_id", userId },
                 { "@created_at", DateTime.Now },
                 { "@parameter", parameter ?? (object)DBNull.Value }

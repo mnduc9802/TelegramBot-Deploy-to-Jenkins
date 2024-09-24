@@ -1,5 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
+using TelegramBot.Commands.MajorCommands.ProjectCommand;
 using TelegramBot.Services;
 using TelegramBot.Utilities.DeployUtilities;
 
@@ -60,6 +61,44 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             {
                 await JobPaginator.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
+        }
+
+        public static async Task HandleDeployCallback(ITelegramBotClient botClient,CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var data = callbackQuery.Data.Substring(7);
+            Console.WriteLine($"Callback data: {data}");
+
+            if (int.TryParse(data, out int projectIndex))
+            {
+                Console.WriteLine($"Project Index: {projectIndex}");
+                await DeployConfirmation.DeployConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
+            }
+            else
+            {
+                Console.WriteLine("Delegating to DeployCommand");
+                await HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+            }
+        }
+
+        public static async Task ShowProjectsKeyboard(ITelegramBotClient botClient,long chatId, long userId, CancellationToken cancellationToken)
+        {
+            var userRole = await CredentialService.GetUserRoleAsync(userId);
+            Console.WriteLine($"Fetching Jenkins projects for userId: {userId} with role: {userRole}");
+
+            var projects = await JenkinsProject.GetJenkinsProjectsAsync(userId, userRole);
+
+            if (projects == null || !projects.Any())
+            {
+                Console.WriteLine("No projects found for the user.");
+                await botClient.SendTextMessageAsync(
+                    chatId: chatId,
+                    text: "Không tìm thấy dự án nào.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            FolderPaginator.chatState[chatId] = projects;
+            await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
         }
 
         public static string NormalizeJenkinsPath(string projectPath)

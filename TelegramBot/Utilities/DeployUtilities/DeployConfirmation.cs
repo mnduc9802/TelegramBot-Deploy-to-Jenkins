@@ -25,23 +25,7 @@ namespace TelegramBot.Utilities.DeployUtilities
 
                 return;
             }
-
-            var project = projects[projectIndex];
-
-            var confirmationKeyboard = new InlineKeyboardMarkup(new[]
-            {
-                InlineKeyboardButton.WithCallbackData("Không", "confirm_no"),
-                InlineKeyboardButton.WithCallbackData("Đồng ý", $"confirm_yes_{projectIndex}")
-            });
-
-            await botClient.EditMessageTextAsync(
-                chatId: callbackQuery.Message.Chat.Id,
-                messageId: callbackQuery.Message.MessageId,
-                text: $"Bạn đã chọn {project}. Bạn có muốn xác nhận triển khai không?",
-                replyMarkup: confirmationKeyboard,
-                cancellationToken: cancellationToken);
         }
-
 
         public static async Task HandleConfirmYesCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
@@ -71,7 +55,6 @@ namespace TelegramBot.Utilities.DeployUtilities
             await botClient.SendTextMessageAsync(
                 chatId: callbackQuery.Message.Chat.Id,
                 text: "Yêu cầu /deploy của bạn đã bị hủy.",
-                replyMarkup: new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Bắt đầu lại", "start_again")),
                 cancellationToken: cancellationToken);
 
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
@@ -151,7 +134,6 @@ namespace TelegramBot.Utilities.DeployUtilities
             await botClient.SendTextMessageAsync(
                 chatId: callbackQuery.Message.Chat.Id,
                 text: "Yêu cầu triển khai job đã bị hủy.",
-                replyMarkup: new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Bắt đầu lại", "start_again")),
                 cancellationToken: cancellationToken);
 
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
