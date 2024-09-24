@@ -1,7 +1,9 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using TelegramBot.Commands;
+using TelegramBot.Commands.MajorCommands.DeployCommand;
+using TelegramBot.Commands.MajorCommands.ProjectCommand;
+using TelegramBot.Services;
 
 namespace TelegramBot.Utilities.DeployUtilities
 {
@@ -10,8 +12,8 @@ namespace TelegramBot.Utilities.DeployUtilities
         public static async Task DeployConfirmationKeyboard(ITelegramBotClient botClient, CallbackQuery callbackQuery, int projectIndex, CancellationToken cancellationToken)
         {
             var userId = callbackQuery.From.Id;
-            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync(userId, userRole);
+            var userRole = await CredentialService.GetUserRoleAsync(userId);
+            var projects = await JenkinsProject.GetJenkinsProjectsAsync(userId, userRole);
 
             // Kiểm tra nếu danh sách projects không rỗng và projectIndex hợp lệ
             if (projects == null || !projects.Any() || projectIndex < 0 || projectIndex >= projects.Count)
@@ -45,8 +47,8 @@ namespace TelegramBot.Utilities.DeployUtilities
         {
             var projectIndex = int.Parse(callbackQuery.Data.Split('_')[2]);
             var userId = callbackQuery.From.Id;
-            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync(userId, userRole);
+            var userRole = await CredentialService.GetUserRoleAsync(userId);
+            var projects = await JenkinsProject.GetJenkinsProjectsAsync(userId, userRole);
 
             if (projects == null || !projects.Any() || projectIndex < 0 || projectIndex >= projects.Count)
             {
@@ -128,13 +130,13 @@ namespace TelegramBot.Utilities.DeployUtilities
         {
             var jobUrlId = int.Parse(callbackQuery.Data.Split('_')[3]);
             var userId = callbackQuery.From.Id;
-            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
+            var userRole = await CredentialService.GetUserRoleAsync(userId);
 
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
-            var jobUrl = await DeployCommand.GetJobUrlFromId(jobUrlId);
+            var jobUrl = await JobExtension.GetJobUrlFromId(jobUrlId);
             if (jobUrl != null)
             {
-                var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole);
+                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole);
                 await DeployCommand.SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken);
             }
             else

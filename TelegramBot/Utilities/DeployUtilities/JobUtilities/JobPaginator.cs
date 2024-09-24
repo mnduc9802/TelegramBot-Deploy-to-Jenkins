@@ -7,9 +7,9 @@ namespace TelegramBot.Utilities.DeployUtilities
     public class JobPaginator
     {
         private const int JOBS_PER_PAGE = 5;
-        public static Dictionary<long, (List<JobInfo> Jobs, string ProjectPath)> chatState = new Dictionary<long, (List<JobInfo>, string)>();
+        public static Dictionary<long, (List<Job> Jobs, string ProjectPath)> chatState = new Dictionary<long, (List<Job>, string)>();
 
-        public static async Task ShowJobsPage(ITelegramBotClient botClient, long chatId, List<JobInfo> jobs, int page, string projectPath, CancellationToken cancellationToken, int? messageId = null)
+        public static async Task ShowJobsPage(ITelegramBotClient botClient, long chatId, List<Job> jobs, int page, string projectPath, CancellationToken cancellationToken, int? messageId = null)
         {
             int startIndex = page * JOBS_PER_PAGE;
             var pageJobs = jobs.Skip(startIndex).Take(JOBS_PER_PAGE).ToList();

@@ -42,7 +42,7 @@ namespace TelegramBot.Utilities.DeployUtilities
 
                 if (JobPaginator.chatState.TryGetValue(chatId, out var state))
                 {
-                    var matchingJobs = state.Jobs.Where(job => job.Name.ToLower().Contains(searchQuery)).ToList();
+                    var matchingJobs = state.Jobs.Where(job => job.JobName.ToLower().Contains(searchQuery)).ToList();
 
                     if (matchingJobs.Any())
                     {

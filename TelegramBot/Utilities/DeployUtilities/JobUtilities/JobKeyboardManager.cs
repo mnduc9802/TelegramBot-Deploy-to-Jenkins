@@ -7,7 +7,7 @@ namespace TelegramBot.Utilities.DeployUtilities
     {
         public static Dictionary<string, string> jobUrlMap = new Dictionary<string, string>();
 
-        public static InlineKeyboardMarkup CreateJobKeyboard(List<JobInfo> jobs, int currentPage, int totalPages, bool includeBackToFolderButton = false, bool includeBackButton = false)
+        public static InlineKeyboardMarkup CreateJobKeyboard(List<Job> jobs, int currentPage, int totalPages, bool includeBackToFolderButton = false, bool includeBackButton = false)
         {
             var keyboardButtons = new List<List<InlineKeyboardButton>>();
 
@@ -16,7 +16,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             {
                 var shortId = GenerateUniqueShortId();
                 jobUrlMap[shortId] = job.Url;
-                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData(job.Name, $"deploy_{shortId}") });
+                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData(job.JobName, $"deploy_{shortId}") });
             }
 
             // Navigation, Search, and Back buttons on the same row

@@ -3,7 +3,7 @@ using Telegram.Bot.Types;
 using TelegramBot.DbContext;
 using dotenv.net;
 
-namespace TelegramBot.Commands
+namespace TelegramBot.Commands.MinorCommands
 {
     public class FeedbackCommand
     {

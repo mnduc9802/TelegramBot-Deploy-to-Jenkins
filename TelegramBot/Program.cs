@@ -3,14 +3,17 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types;
 using Telegram.Bot;
-using TelegramBot.Commands;
 using TelegramBot.Utilities.DeployUtilities;
-using TelegramBot.Utilities;
 using dotenv.net;
 using System.Collections.Concurrent;
 using Npgsql;
 using TelegramBot.DbContext;
 using TelegramBot.Models;
+using TelegramBot.Commands.MajorCommands.DeployCommand;
+using TelegramBot.Commands.MajorCommands.ProjectCommand;
+using TelegramBot.Commands.MinorCommands;
+using TelegramBot.Utilities.EnvironmentUtilities;
+using TelegramBot.Services;
 
 namespace TelegramBot
 {
@@ -38,7 +41,7 @@ namespace TelegramBot
             var receiverOptions = new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() };
             botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions);
 
-            ScheduledJobManager.Initialize();
+            ScheduleJob.Initialize();
             Console.WriteLine("Bot started. Press any key to exit.");
             Console.ReadKey();
         }
@@ -95,15 +98,15 @@ namespace TelegramBot
             {
                 if (state.StartsWith("schedule_time_"))
                 {
-                    await DeployCommand.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
+                    await ScheduleJob.HandleScheduleTimeInputAsync(botClient, message, cancellationToken);
                 }
                 else if (state.StartsWith("schedule_version_"))
                 {
-                    await DeployCommand.HandleScheduleParameterInputAsync(botClient, message, cancellationToken);
+                    await ScheduleJob.HandleScheduleParameterInputAsync(botClient, message, cancellationToken);
                 }
                 else if (state.StartsWith("edit_"))
                 {
-                    await ProjectsCommand.HandleEditJobTimeInputAsync(botClient, message, cancellationToken);
+                    await ListScheduleJob.HandleEditJobTimeInputAsync(botClient, message, cancellationToken);
                 }
                 return;
             }
@@ -124,7 +127,7 @@ namespace TelegramBot
                         await ShowProjectsKeyboard(chatId, message.From.Id, cancellationToken);
                         break;
                     case "/projects":
-                        await ProjectsCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        await ProjectCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/clear":
                         await ClearCommand.ClearConfirmationKeyboard(botClient, chatId, cancellationToken);
@@ -166,7 +169,7 @@ namespace TelegramBot
             }
             else if (data == "show_projects")
             {
-                await ProjectsCommand.ShowProjects(botClient, chatId, callbackQuery.From.Id, cancellationToken);
+                await ProjectCommand.ShowProjects(botClient, chatId, callbackQuery.From.Id, cancellationToken);
             }
 
             //Folder
@@ -224,22 +227,22 @@ namespace TelegramBot
             //Scheduled Job
             else if (data.StartsWith("schedule_job_"))
             {
-                await DeployCommand.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
+                await ScheduleJob.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
             }
 
             else if (data.StartsWith("show_scheduled_jobs"))
             {
-                await ProjectsCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+                await ProjectCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
 
             else if (data.StartsWith("edit_job_"))
             {
-                await ProjectsCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+                await ProjectCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
 
             else if (data.StartsWith("delete_job_"))
             {
-                await ProjectsCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+                await ProjectCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
 
             //Confirmation Folder/Job
@@ -269,14 +272,14 @@ namespace TelegramBot
             var version = message.Text.Trim();
             versionInputState.TryRemove(message.Chat.Id, out _);
 
-            var userRole = await ProjectsCommand.GetUserRoleAsync(message.From.Id);
-            var jobUrl = await DeployCommand.GetJobUrlFromId(int.Parse(jobUrlId));
+            var userRole = await CredentialService.GetUserRoleAsync(message.From.Id);
+            var jobUrl = await JobExtension.GetJobUrlFromId(int.Parse(jobUrlId));
             if (!string.IsNullOrEmpty(jobUrl))
             {
                 // Update or create the job with the parameter
-                await DeployCommand.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
+                await JobExtension.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
 
-                var deployResult = await DeployCommand.DeployProjectAsync(jobUrl, userRole, version);
+                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, version);
                 await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
             }
             else
@@ -304,10 +307,10 @@ namespace TelegramBot
 
         private static async Task ShowProjectsKeyboard(long chatId, long userId, CancellationToken cancellationToken)
         {
-            var userRole = await ProjectsCommand.GetUserRoleAsync(userId);
+            var userRole = await CredentialService.GetUserRoleAsync(userId);
             Console.WriteLine($"Fetching Jenkins projects for userId: {userId} with role: {userRole}");
 
-            var projects = await ProjectsCommand.GetJenkinsProjectsAsync(userId, userRole);
+            var projects = await JenkinsProject.GetJenkinsProjectsAsync(userId, userRole);
 
             if (projects == null || !projects.Any())
             {

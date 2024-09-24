@@ -1,6 +1,6 @@
 ﻿using dotenv.net;
 
-namespace TelegramBot.Utilities
+namespace TelegramBot.Utilities.EnvironmentUtilities
 {
     public static class EnvironmentVariableLoader
     {
