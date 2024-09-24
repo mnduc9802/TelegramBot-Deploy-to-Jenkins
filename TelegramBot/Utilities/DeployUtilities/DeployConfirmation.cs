@@ -133,7 +133,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             var userRole = await CredentialService.GetUserRoleAsync(userId);
 
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
-            var jobUrl = await JobExtension.GetJobUrlFromId(jobUrlId);
+            var jobUrl = await JobService.GetJobUrlFromId(jobUrlId);
             if (jobUrl != null)
             {
                 var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole);

@@ -37,7 +37,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             else if (jobs.Count == 1)
             {
                 await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
-                var jobUrlId = await JobExtension.GetOrCreateJobUrlId(jobs[0].Url, userId);
+                var jobUrlId = await JobService.GetOrCreateJobUrlId(jobs[0].Url, userId);
                 await DeployConfirmation.JobDeployConfirmationKeyboard(
                     botClient,
                     message.Chat.Id,
@@ -81,6 +81,8 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 var byteArray = Encoding.ASCII.GetBytes($"{credentials.Username}:{credentials.Password}");
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
+                Console.WriteLine($"Attempting to deploy project: {projectPath}");
+
                 var crumbResponse = await client.GetAsync("/crumbIssuer/api/json");
                 if (!crumbResponse.IsSuccessStatusCode)
                 {
@@ -96,25 +98,29 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 {
                     url += $"WithParameters?VERSION={parameter}";
                 }
-                Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
 
+                Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
                 var response = await client.PostAsync(url, null);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"Deployment failed. Status code: {response.StatusCode}");
                     Console.WriteLine($"Response content: {await response.Content.ReadAsStringAsync()}");
+                    return false;
                 }
                 else
                 {
                     Console.WriteLine("Deployment request sent successfully.");
-                }
 
-                return response.IsSuccessStatusCode;
+                    await JobService.ResetJobsTableIfNeeded();
+
+                    return true;
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Deployment failed: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }

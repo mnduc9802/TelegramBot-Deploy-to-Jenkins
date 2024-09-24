@@ -6,9 +6,6 @@ using Telegram.Bot;
 using TelegramBot.Utilities.DeployUtilities;
 using dotenv.net;
 using System.Collections.Concurrent;
-using Npgsql;
-using TelegramBot.DbContext;
-using TelegramBot.Models;
 using TelegramBot.Commands.MajorCommands.DeployCommand;
 using TelegramBot.Commands.MajorCommands.ProjectCommand;
 using TelegramBot.Commands.MinorCommands;
@@ -41,7 +38,7 @@ namespace TelegramBot
             var receiverOptions = new ReceiverOptions { AllowedUpdates = Array.Empty<UpdateType>() };
             botClient.StartReceiving(HandleUpdateAsync, HandlePollingErrorAsync, receiverOptions);
 
-            ScheduleJob.Initialize();
+            JobService.Initialize();
             Console.WriteLine("Bot started. Press any key to exit.");
             Console.ReadKey();
         }
@@ -273,11 +270,11 @@ namespace TelegramBot
             versionInputState.TryRemove(message.Chat.Id, out _);
 
             var userRole = await CredentialService.GetUserRoleAsync(message.From.Id);
-            var jobUrl = await JobExtension.GetJobUrlFromId(int.Parse(jobUrlId));
+            var jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
             if (!string.IsNullOrEmpty(jobUrl))
             {
                 // Update or create the job with the parameter
-                await JobExtension.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
+                await JobService.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
 
                 var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, version);
                 await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
@@ -321,8 +318,6 @@ namespace TelegramBot
                     cancellationToken: cancellationToken);
                 return;
             }
-
-            Console.WriteLine($"Projects retrieved: {string.Join(", ", projects)}");
 
             FolderPaginator.chatState[chatId] = projects;
             await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);

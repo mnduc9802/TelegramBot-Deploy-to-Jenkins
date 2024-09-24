@@ -8,7 +8,6 @@ namespace TelegramBot.Utilities.EnvironmentUtilities
         {
             DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
             var jenkinsUrl = Environment.GetEnvironmentVariable("JENKINS_URL");
-            Console.WriteLine($"Loaded JENKINS_URL: {jenkinsUrl}");
             return jenkinsUrl;
         }
 

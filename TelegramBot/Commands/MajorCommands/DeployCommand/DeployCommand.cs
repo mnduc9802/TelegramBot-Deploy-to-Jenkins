@@ -24,7 +24,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 var jobUrl = JobKeyboardManager.GetJobUrl(shortId);
                 if (jobUrl != null)
                 {
-                    var jobUrlId = await JobExtension.GetOrCreateJobUrlId(jobUrl, userId);
+                    var jobUrlId = await JobService.GetOrCreateJobUrlId(jobUrl, userId);
                     bool hasParameter = jobUrl.EndsWith("_parameter");
                     await DeployConfirmation.JobDeployConfirmationKeyboard(
                         botClient,
