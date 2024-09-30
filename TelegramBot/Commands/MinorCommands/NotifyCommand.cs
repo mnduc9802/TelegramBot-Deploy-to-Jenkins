@@ -3,7 +3,7 @@ using Telegram.Bot.Types;
 
 namespace TelegramBot.Commands.MinorCommands
 {
-    public class StartCommand
+    public class NotifyCommand
     {
         // Đặt Chat ID của group chung ở đây
         private const long GroupChatId = -4201790625; // Thay thế bằng Chat ID của group của bạn

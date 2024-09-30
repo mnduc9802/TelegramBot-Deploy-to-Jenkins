@@ -53,7 +53,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             return shortId;
         }
 
-        public static string GetJobUrl(string shortId)
+        public static string? GetJobUrl(string shortId)
         {
             return jobUrlMap.TryGetValue(shortId, out var url) ? url : null;
         }

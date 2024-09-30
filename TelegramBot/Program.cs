@@ -114,11 +114,11 @@ namespace TelegramBot
                 var command = text.Split(' ')[0].ToLower();
                 switch (command)
                 {
-                    case "/start":
-                        await StartCommand.ExecuteAsync(botClient, message, cancellationToken);
-                        break;
                     case "/hello":
                         await HelloCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                    case "/notify":
+                        await NotifyCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/deploy":
                         await DeployCommand.ShowProjectsKeyboard(botClient, chatId, message.From.Id, cancellationToken);
