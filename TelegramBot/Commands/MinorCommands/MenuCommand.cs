@@ -11,8 +11,8 @@ namespace TelegramBot.Commands.MinorCommands
             {
                 new BotCommand { Command = "hello", Description = "Chào mừng người dùng" },
                 new BotCommand { Command = "notify", Description = "Thông báo đến group chat khác" },
-                new BotCommand { Command = "deploy", Description = "Triển khai dự án" },
                 new BotCommand { Command = "projects", Description = "Danh sách các dự án" },
+                new BotCommand { Command = "deploy", Description = "Triển khai dự án" },
                 new BotCommand { Command = "status", Description = "Trạng thái" },
                 new BotCommand { Command = "clear", Description = "Xóa tất cả tin nhắn" },
                 new BotCommand { Command = "feedback", Description = "Gửi phản hồi" },
