@@ -111,7 +111,8 @@ namespace TelegramBot.Utilities.DeployUtilities
 
         public static async Task HandleConfirmJobYesCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var jobUrlId = int.Parse(callbackQuery.Data.Split('_')[3]);
+            const int JOB_URL_ID_INDEX = 3; // Define the index for jobUrlId as a constant
+            var jobUrlId = int.Parse(callbackQuery.Data.Split('_')[JOB_URL_ID_INDEX]);
             var userId = callbackQuery.From.Id;
             var userRole = await CredentialService.GetUserRoleAsync(userId);
 

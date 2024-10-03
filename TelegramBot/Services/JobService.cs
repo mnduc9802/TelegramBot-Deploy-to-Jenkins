@@ -24,7 +24,8 @@ namespace TelegramBot.Services
 
                 Console.WriteLine($"Current ID: {maxId}"); // Logging for debugging
 
-                if (maxId != null && Convert.ToInt32(maxId) >= 9999)
+                const int MAX_JOB_ID = 9999;
+                if (maxId != null && Convert.ToInt32(maxId) >= MAX_JOB_ID)
                 {
                     // Perform the reset
                     var resetSql = @"TRUNCATE TABLE jobs RESTART IDENTITY;";
@@ -50,11 +51,12 @@ namespace TelegramBot.Services
         {
             var dbConnection = new DatabaseConnection(Program.connectionString);
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
+            const string JOB_PREFIX = "job/";
 
             // Process the URL more safely
             string fullPath = url;
             string jobName = url;
-            if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
+            if (Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
             {
                 fullPath = uri.AbsolutePath.TrimStart('/');
                 jobName = uri.Segments.Last().TrimEnd('/');
@@ -64,9 +66,10 @@ namespace TelegramBot.Services
                 jobName = url.Split('/').Last().TrimEnd('/');
             }
 
-            if (fullPath.StartsWith("job/", StringComparison.OrdinalIgnoreCase))
+            if (fullPath.StartsWith(JOB_PREFIX, StringComparison.OrdinalIgnoreCase))
             {
-                fullPath = fullPath.Substring(4);
+                // Sử dụng hằng số JOB_PREFIX để loại bỏ tiền tố "job/"
+                fullPath = fullPath.Substring(JOB_PREFIX.Length);
             }
 
             var selectSql = "SELECT id FROM jobs WHERE url = @url";

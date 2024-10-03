@@ -175,7 +175,8 @@ namespace TelegramBot
             }
             else if (data.StartsWith("folder_"))
             {
-                var folderId = data.Substring(7);
+                const int FOLDER_ID_START_INDEX = 7;
+                var folderId = data.Substring(FOLDER_ID_START_INDEX);
                 if (FolderKeyboardManager.folderPathMap.TryGetValue(folderId, out string folderPath))
                 {
                     await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, folderPath, cancellationToken);

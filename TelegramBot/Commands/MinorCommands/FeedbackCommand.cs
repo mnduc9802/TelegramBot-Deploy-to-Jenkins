@@ -37,7 +37,7 @@ namespace TelegramBot.Commands.MinorCommands
             var userName = string.IsNullOrEmpty(message.From.Username) ? $"{firstName} {lastName}" : message.From.Username;
 
             // Loại bỏ tên bot khỏi nội dung phản hồi
-            var feedbackText = message.Text.Replace("@mnduc9802_deploy_bot", "").Trim();
+            var feedbackText = message.Text.Replace("@mnduc9802_build_bot", "").Trim();
 
             await SaveFeedbackToDatabase(userId, userName, feedbackText);
 

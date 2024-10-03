@@ -15,8 +15,6 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 var userRole = await CredentialService.GetUserRoleAsync(userId);
                 var deployResult = await DeployJob.DeployProjectAsync(jobName, userRole, parameter);
                 Console.WriteLine($"Deploy result for {jobName}: {deployResult}");
-
-                // TODO: Notify the user about the deployment result
             }
             catch (Exception ex)
             {
@@ -73,7 +71,8 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
 
             string[] parts = Program.schedulingState[message.Chat.Id].Split('_');
-            string jobUrlId = parts[2];
+            const int JOB_URL_ID_INDEX = 2; // Vị trí của jobUrlId trong mảng parts
+            string jobUrlId = parts[JOB_URL_ID_INDEX];
 
             var jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
             bool hasParameter = jobUrl.EndsWith("_parameter");
@@ -90,11 +89,15 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 
         public static async Task HandleScheduleParameterInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
+            const int JOB_DETAILS_INDEX = 0; // Chỉ số của chuỗi chứa thông tin chi tiết về job
+            const int SCHEDULE_TIME_INDEX = 1; // Chỉ số của thời gian lên lịch
+            const int JOB_URL_ID_INDEX = 2; // Chỉ số của jobUrlId trong chuỗi jobParts
+
             string parameter = message.Text.Trim();
             string[] jobInfo = Program.schedulingState[message.Chat.Id].Split('|');
-            string[] jobParts = jobInfo[0].Split('_');
-            string jobUrlId = jobParts[2]; // This should be the correct job ID
-            DateTime scheduledTime = DateTime.Parse(jobInfo[1]);
+            string[] jobParts = jobInfo[JOB_DETAILS_INDEX].Split('_');
+            string jobUrlId = jobParts[JOB_URL_ID_INDEX];
+            DateTime scheduledTime = DateTime.Parse(jobInfo[SCHEDULE_TIME_INDEX]);
 
             // Fetch the correct job URL using the jobUrlId
             string jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));

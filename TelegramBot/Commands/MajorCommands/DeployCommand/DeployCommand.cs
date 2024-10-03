@@ -22,7 +22,8 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
 
             var chatId = callbackQuery.Message.Chat.Id;
-            var userId = callbackQuery.From?.Id ?? 0;
+            const long UNKNOWN_USER_ID = 0;
+            var userId = callbackQuery.From?.Id ?? UNKNOWN_USER_ID;
             var userRole = await CredentialService.GetUserRoleAsync(userId);
 
             if (callbackQuery.Data?.StartsWith("deploy_") == true)
@@ -72,7 +73,8 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 
         public static async Task HandleDeployCallback(ITelegramBotClient botClient,CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            var data = callbackQuery.Data?.Substring(7);
+            const int DEPLOY_PREFIX_LENGTH = 7; // Chiều dài tiền tố "deploy_"
+            var data = callbackQuery.Data?.Substring(DEPLOY_PREFIX_LENGTH);
             Console.WriteLine($"Callback data: {data}");
 
             if (int.TryParse(data, out int projectIndex))

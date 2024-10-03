@@ -30,13 +30,14 @@ namespace TelegramBot.Utilities.DeployUtilities
 
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
+            const int PAGE_INDEX = 1; // Chỉ số của phần tử trong mảng chứa số trang
             var chatId = callbackQuery.Message.Chat.Id;
             var messageId = callbackQuery.Message.MessageId;
             if (callbackQuery.Data.StartsWith("folderpage_"))
             {
                 if (chatState.TryGetValue(chatId, out var folders))
                 {
-                    var page = int.Parse(callbackQuery.Data.Split('_')[1]);
+                    var page = int.Parse(callbackQuery.Data.Split('_')[PAGE_INDEX]);
                     await ShowFoldersPage(botClient, chatId, folders, page, cancellationToken, messageId);
                 }
                 else

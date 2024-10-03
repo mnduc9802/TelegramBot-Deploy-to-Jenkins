@@ -58,14 +58,15 @@ namespace TelegramBot.Commands.MajorCommands.ProjectCommand
         public static async Task HandleEditJobTimeInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
             var chatId = message.Chat.Id;
-            var userId = message.From.Id;
+            var userId = message.From?.Id;
             if (!Program.schedulingState.TryGetValue(chatId, out var state) || !state.StartsWith("edit_"))
             {
                 await botClient.SendTextMessageAsync(chatId, "Có lỗi xảy ra. Vui lòng thử lại.", cancellationToken: cancellationToken);
                 return;
             }
 
-            var jobName = state.Substring(5); // Loại bỏ tiền tố "edit_"
+            const int EDIT_PREFIX_LENGTH = 5;
+            var jobName = state.Substring(EDIT_PREFIX_LENGTH); // Loại bỏ tiền tố "edit_"
             string messageText = message.Text.Trim();
 
             // Kiểm tra nếu tin nhắn chứa "hủy" hoặc "cancel"
