@@ -67,6 +67,11 @@ Bot được thiết kế để xử lý các lệnh và phản hồi từ ngư�
 - **Lệnh**: `/hello`
 - **Hành động**: Gửi tin nhắn chào mừng.
 
+### NotifyCommand
+- **Mô tả**: Gửi tin nhắn thông báo đến group chat khác.
+- **Lệnh**: `/notify`
+- **Hành động**: Gửi tin nhắn thông báo.
+
 ### ProjectsCommand
 - **Mô tả**: Hiển thị danh sách các dự án và danh sách các Job đang được lên lịch.
 - **Lệnh**: `/projects`
@@ -78,19 +83,25 @@ Bot được thiết kế để xử lý các lệnh và phản hồi từ ngư�
 - **Hành động**: Gửi tin nhắn xác nhận và thực hiện triển khai dự án.
 
 ### StatusCommand
-- **Mô tả**: Hiển thị trạng thái của bot.
+- **Mô tả**: Hiển thị trạng thái của Bot.
 - **Lệnh**: `/status`
 - **Hành động**: Gửi tin nhắn trạng thái bot và kiểm tra kết nối mạng.
+
+### ClearCommand
+- **Mô tả**: Xóa tất cả tin nhắn gần nhất của Bot.
+- **Lệnh**: `/clear`
+- **Hành động**: Xóa tất cả tin nhắn.
+
+### FeedbackCommand
+- **Mô tả**: Yêu cầu và xử lý phản hồi từ người dùng.
+- **Lệnh**: `/feedback`
+- **Hành động**: Gửi tin nhắn yêu cầu phản hồi và xử lý phản hồi từ người dùng.
 
 ### HelpCommand
 - **Mô tả**: Hiển thị hướng dẫn sử dụng các lệnh của bot.
 - **Lệnh**: `/help`
 - **Hành động**: Gửi tin nhắn hướng dẫn.
 
-### FeedbackCommand
-- **Mô tả**: Yêu cầu và xử lý phản hồi từ người dùng.
-- **Lệnh**: `/feedback`
-- **Hành động**: Gửi tin nhắn yêu cầu phản hồi và xử lý phản hồi từ người dùng.
 
 ---
 
