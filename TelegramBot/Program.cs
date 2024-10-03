@@ -20,8 +20,8 @@ namespace TelegramBot
         public static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
         public static ConcurrentDictionary<long, string> schedulingState = new ConcurrentDictionary<long, string>();
         public static ConcurrentDictionary<long, string> versionInputState = new ConcurrentDictionary<long, string>();
-        public static string connectionString { get; private set; }
-        public static string botToken { get; private set; }
+        public static string? connectionString { get; private set; }
+        public static string? botToken { get; private set; }
 
         
         public static async Task Main()
@@ -85,13 +85,13 @@ namespace TelegramBot
                 return;
             }
 
-            if (versionInputState.TryGetValue(message.Chat.Id, out string jobUrl))
+            if (versionInputState.TryGetValue(message.Chat.Id, out string? jobUrl))
             {
                 await HandleVersionInputAsync(botClient, message, jobUrl, cancellationToken);
                 return;
             }
 
-            if (schedulingState.TryGetValue(message.Chat.Id, out string state))
+            if (schedulingState.TryGetValue(message.Chat.Id, out string? state))
             {
                 if (state.StartsWith("schedule_time_"))
                 {
@@ -177,7 +177,7 @@ namespace TelegramBot
             {
                 const int FOLDER_ID_START_INDEX = 7;
                 var folderId = data.Substring(FOLDER_ID_START_INDEX);
-                if (FolderKeyboardManager.folderPathMap.TryGetValue(folderId, out string folderPath))
+                if (FolderKeyboardManager.folderPathMap.TryGetValue(folderId, out string? folderPath))
                 {
                     await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, folderPath, cancellationToken);
                     await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
