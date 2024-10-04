@@ -1,24 +1,12 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.DbContext;
-using dotenv.net;
+using TelegramBot.Utilities.EnvironmentUtilities;
 
 namespace TelegramBot.Commands.MinorCommands
 {
     public class FeedbackCommand
     {
-        private static readonly DatabaseConnection _dbConnection;
-        private static readonly long _myChatId;
-
-        static FeedbackCommand()
-        {
-            var envVars = DotEnv.Read(options: new DotEnvOptions(probeForEnv: true));
-            string connectionString = envVars["DATABASE_CONNECTION_STRING"];
-            _dbConnection = new DatabaseConnection(connectionString);
-
-            _myChatId = long.Parse(envVars["MY_TELEGRAM_CHAT_ID"]);
-        }
-
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
             var feedbackText = "Vui lòng gửi phản hồi của bạn bằng cách trả lời tin nhắn này với định dạng @bot text.";
@@ -44,7 +32,7 @@ namespace TelegramBot.Commands.MinorCommands
             var feedbackNotification = $"Phản hồi mới từ người dùng {firstName} {lastName} (Username: {userName}, ID: {userId}):\n{feedbackText}";
 
             await botClient.SendTextMessageAsync(
-                chatId: _myChatId,
+                chatId: EnvironmentVariableLoader.GetMyTelegramChatId(),
                 text: feedbackNotification,
                 cancellationToken: cancellationToken
             );
@@ -58,6 +46,8 @@ namespace TelegramBot.Commands.MinorCommands
 
         private static async Task SaveFeedbackToDatabase(long userId, string userName, string feedbackText)
         {
+            var dbConnection = new DatabaseConnection(EnvironmentVariableLoader.GetDatabaseConnectionString());
+
             string sql = "INSERT INTO user_feedback (user_id, user_name, feedback_text, created_at) VALUES (@userId, @userName, @feedbackText, @createdAt)";
 
             var parameters = new Dictionary<string, object>
@@ -68,7 +58,7 @@ namespace TelegramBot.Commands.MinorCommands
                 { "@createdAt", DateTime.UtcNow }
             };
 
-            await _dbConnection.ExecuteNonQueryAsync(sql, parameters);
+            await dbConnection.ExecuteNonQueryAsync(sql, parameters);
         }
     }
 }

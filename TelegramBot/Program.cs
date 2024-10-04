@@ -26,10 +26,9 @@ namespace TelegramBot
         
         public static async Task Main()
         {
-            var envVars = DotEnv.Read(options: new DotEnvOptions(probeForEnv: true));
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
-            botToken = envVars["TELEGRAM_BOT_TOKEN"];
-            connectionString = envVars["DATABASE_CONNECTION_STRING"];
+            botToken = EnvironmentVariableLoader.GetTelegramBotToken();
+            connectionString = EnvironmentVariableLoader.GetDatabaseConnectionString();
 
 
 
