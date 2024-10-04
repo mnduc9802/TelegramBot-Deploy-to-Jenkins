@@ -3,7 +3,7 @@ using TelegramBot.Utilities.EnvironmentUtilities;
 
 namespace TelegramBot.Services
 {
-    internal class CredentialService
+    public class CredentialService
     {
         public static async Task<string> GetUserRoleAsync(long userId)
         {

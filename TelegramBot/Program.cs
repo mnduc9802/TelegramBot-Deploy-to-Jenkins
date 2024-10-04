@@ -4,7 +4,6 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Utilities.DeployUtilities;
-using dotenv.net;
 using System.Collections.Concurrent;
 using TelegramBot.Commands.MajorCommands.DeployCommand;
 using TelegramBot.Commands.MajorCommands.ProjectCommand;
@@ -29,8 +28,6 @@ namespace TelegramBot
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
             botToken = EnvironmentVariableLoader.GetTelegramBotToken();
             connectionString = EnvironmentVariableLoader.GetDatabaseConnectionString();
-
-
 
             botClient = new TelegramBotClient(botToken);
             await MenuCommand.SetBotCommandsAsync(botClient);
@@ -106,7 +103,6 @@ namespace TelegramBot
                 }
                 return;
             }
-
 
             if (text.StartsWith("/"))
             {

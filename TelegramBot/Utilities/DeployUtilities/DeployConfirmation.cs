@@ -129,7 +129,6 @@ namespace TelegramBot.Utilities.DeployUtilities
             }
         }
 
-
         public static async Task HandleConfirmJobNoCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             await botClient.SendTextMessageAsync(

@@ -53,12 +53,24 @@ namespace TelegramBot.Utilities.EnvironmentUtilities
             return (username, password);
         }
 
+        //Feedback Function
         public static long GetMyTelegramChatId()
         {
             var chatIdString = GetEnvironmentVariable("MY_TELEGRAM_CHAT_ID");
             if (!long.TryParse(chatIdString, out long chatId))
             {
                 throw new InvalidOperationException("MY_TELEGRAM_CHAT_ID is not a valid long number.");
+            }
+            return chatId;
+        }
+
+        //Notify Function
+        public static long GetGroupTelegramChatId()
+        {
+            var chatIdString = GetEnvironmentVariable("GROUP_TELEGRAM_CHAT_ID");
+            if (!long.TryParse(chatIdString, out long chatId))
+            {
+                throw new InvalidOperationException("GROUP_TELEGRAM_CHAT_ID is not a valid long number.");
             }
             return chatId;
         }
