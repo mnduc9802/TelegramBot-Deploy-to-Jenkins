@@ -108,9 +108,9 @@ Bot được thiết kế để xử lý các lệnh và phản hồi từ ngư�
 
 1. Cài đặt .NET 8.
 2. Sao chép mã nguồn của bot.
-3. Thêm token của bot vào mã nguồn.
+3. Thêm các biến môi trường của bot vào mã nguồn.
 4. Chạy chương trình bằng lệnh `dotnet run`.
-5. Sử dụng các lệnh như `/start`, `/projects`, `/deploy`, `/status`, `/help`, `/menu` hoặc `/feedback` để tương tác với bot.
+5. Sử dụng các lệnh như `/hello`, `/projects`, `/deploy`, `/status`, `/help`, `/menu` hoặc `/feedback` để tương tác với bot.
 
 ---
 
