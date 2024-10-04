@@ -23,11 +23,6 @@ DEVELOPER_PASSWORD=*******
 TESTER_USERNAME=*******
 TESTER_PASSWORD=*******
 
- :warning: Chỉ sử dụng 1 Connection String
-//Database Local Info
-//DATABASE_CONNECTION_STRING=*******
-
-//Database Server Info
 DATABASE_CONNECTION_STRING=*******
 ```
 ---
