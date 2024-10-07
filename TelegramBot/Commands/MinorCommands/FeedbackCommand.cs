@@ -7,6 +7,7 @@ namespace TelegramBot.Commands.MinorCommands
 {
     public class FeedbackCommand
     {
+        public static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
             var feedbackText = "Vui lòng gửi phản hồi của bạn bằng cách trả lời tin nhắn này với định dạng @bot text.";

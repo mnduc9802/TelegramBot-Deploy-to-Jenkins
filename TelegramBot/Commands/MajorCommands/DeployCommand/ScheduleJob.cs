@@ -2,11 +2,13 @@
 using Telegram.Bot;
 using System.Data;
 using TelegramBot.Services;
+using System.Collections.Concurrent;
 
 namespace TelegramBot.Commands.MajorCommands.DeployCommand
 {
     public class ScheduleJob
     {
+        public static ConcurrentDictionary<long, string> schedulingState = new ConcurrentDictionary<long, string>();
         public static async Task ExecuteScheduledJob(string jobName, long userId, string parameter)
         {
             try
@@ -36,7 +38,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 
             if (messageText.ToLower().Contains("hủy") || messageText.ToLower().Contains("cancel"))
             {
-                Program.schedulingState.TryRemove(message.Chat.Id, out _);
+                schedulingState.TryRemove(message.Chat.Id, out _);
                 await botClient.SendTextMessageAsync(
                     message.Chat.Id,
                     "Lệnh lên lịch đã bị hủy. Vui lòng /deploy để triển khai lại.",
@@ -70,7 +72,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 return;
             }
 
-            string[] parts = Program.schedulingState[message.Chat.Id].Split('_');
+            string[] parts = schedulingState[message.Chat.Id].Split('_');
             const int JOB_URL_ID_INDEX = 2; // Vị trí của jobUrlId trong mảng parts
             string jobUrlId = parts[JOB_URL_ID_INDEX];
 
@@ -94,7 +96,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             const int JOB_URL_ID_INDEX = 2; // Chỉ số của jobUrlId trong chuỗi jobParts
 
             string parameter = message.Text.Trim();
-            string[] jobInfo = Program.schedulingState[message.Chat.Id].Split('|');
+            string[] jobInfo = schedulingState[message.Chat.Id].Split('|');
             string[] jobParts = jobInfo[JOB_DETAILS_INDEX].Split('_');
             string jobUrlId = jobParts[JOB_URL_ID_INDEX];
             DateTime scheduledTime = DateTime.Parse(jobInfo[SCHEDULE_TIME_INDEX]);
@@ -121,7 +123,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                 cancellationToken: cancellationToken);
 
-            Program.schedulingState[chatId] = $"schedule_time_{jobUrlId}";
+            schedulingState[chatId] = $"schedule_time_{jobUrlId}";
         }
 
         public static async Task RequestScheduleVersionAsync(ITelegramBotClient botClient, long chatId, string jobUrlId, DateTime scheduledTime, CancellationToken cancellationToken)
@@ -131,7 +133,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 "Vui lòng nhập tham số VERSION cho job được lên lịch:",
                 cancellationToken: cancellationToken);
 
-            Program.schedulingState[chatId] = $"schedule_version_{jobUrlId}|{scheduledTime:yyyy-MM-dd HH:mm:ss}";
+            schedulingState[chatId] = $"schedule_version_{jobUrlId}|{scheduledTime:yyyy-MM-dd HH:mm:ss}";
         }
     }
 }

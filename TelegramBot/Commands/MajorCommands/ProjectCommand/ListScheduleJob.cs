@@ -3,6 +3,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.DbContext;
 using TelegramBot.Models;
+using TelegramBot.Commands.MajorCommands.DeployCommand;
 
 namespace TelegramBot.Commands.MajorCommands.ProjectCommand
 {
@@ -34,7 +35,7 @@ namespace TelegramBot.Commands.MajorCommands.ProjectCommand
                 cancellationToken: cancellationToken);
 
             // Store the job name in the scheduling state to handle the response
-            Program.schedulingState[chatId] = $"edit_{jobName}";
+            ScheduleJob.schedulingState[chatId] = $"edit_{jobName}";
         }
 
         public static async Task DeleteJob(ITelegramBotClient botClient, long chatId, int messageId, string jobName, CancellationToken cancellationToken)
@@ -59,7 +60,7 @@ namespace TelegramBot.Commands.MajorCommands.ProjectCommand
         {
             var chatId = message.Chat.Id;
             var userId = message.From?.Id;
-            if (!Program.schedulingState.TryGetValue(chatId, out var state) || !state.StartsWith("edit_"))
+            if (!ScheduleJob.schedulingState.TryGetValue(chatId, out var state) || !state.StartsWith("edit_"))
             {
                 await botClient.SendTextMessageAsync(chatId, "Có lỗi xảy ra. Vui lòng thử lại.", cancellationToken: cancellationToken);
                 return;
@@ -72,7 +73,7 @@ namespace TelegramBot.Commands.MajorCommands.ProjectCommand
             // Kiểm tra nếu tin nhắn chứa "hủy" hoặc "cancel"
             if (messageText.ToLower().Contains("hủy") || messageText.ToLower().Contains("cancel"))
             {
-                Program.schedulingState.TryRemove(chatId, out _);
+                ScheduleJob.schedulingState.TryRemove(chatId, out _);
                 await botClient.SendTextMessageAsync(
                     chatId,
                     "Lệnh sửa lịch đã bị hủy. Vui lòng /projects để xem lại danh sách.",
@@ -145,7 +146,7 @@ namespace TelegramBot.Commands.MajorCommands.ProjectCommand
             }
 
             // Xóa trạng thái scheduling
-            Program.schedulingState.TryRemove(chatId, out _);
+            ScheduleJob.schedulingState.TryRemove(chatId, out _);
 
             // Hiển thị danh sách các job đã lên lịch
             await ProjectCommand.ShowScheduledJobs(botClient, chatId, cancellationToken);

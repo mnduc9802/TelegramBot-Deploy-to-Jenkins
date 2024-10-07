@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using System.Collections.Concurrent;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.Commands.MajorCommands.ProjectCommand;
 using TelegramBot.Services;
@@ -8,6 +9,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 {
     public class DeployCommand
     {
+        public static ConcurrentDictionary<long, string> versionInputState = new ConcurrentDictionary<long, string>();
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
             await DeployJob.ExecuteAsync(botClient, message, projectPath, cancellationToken);
@@ -86,6 +88,27 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             {
                 Console.WriteLine("Delegating to DeployCommand");
                 await HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+            }
+        }
+
+        public static async Task HandleVersionInputAsync(ITelegramBotClient botClient, Message message, string jobUrlId, CancellationToken cancellationToken)
+        {
+            var version = message.Text.Trim();
+            versionInputState.TryRemove(message.Chat.Id, out _);
+
+            var userRole = await CredentialService.GetUserRoleAsync(message.From.Id);
+            var jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
+            if (!string.IsNullOrEmpty(jobUrl))
+            {
+                // Update or create the job with the parameter
+                await JobService.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
+
+                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, version);
+                await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
             }
         }
 

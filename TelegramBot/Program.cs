@@ -4,7 +4,6 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Utilities.DeployUtilities;
-using System.Collections.Concurrent;
 using TelegramBot.Commands.MajorCommands.DeployCommand;
 using TelegramBot.Commands.MajorCommands.ProjectCommand;
 using TelegramBot.Commands.MinorCommands;
@@ -17,13 +16,9 @@ namespace TelegramBot
     public class Program
     {
         public static ITelegramBotClient botClient;
-        public static Dictionary<long, bool> feedbackState = new Dictionary<long, bool>();
-        public static ConcurrentDictionary<long, string> schedulingState = new ConcurrentDictionary<long, string>();
-        public static ConcurrentDictionary<long, string> versionInputState = new ConcurrentDictionary<long, string>();
         public static string? connectionString { get; private set; }
         public static string? botToken { get; private set; }
 
-        
         public static async Task Main()
         {
             try
@@ -142,20 +137,20 @@ namespace TelegramBot
                 await FolderFinder.HandleSearchQuery(botClient, message, cancellationToken);
                 await JobFinder.HandleSearchQuery(botClient, message, cancellationToken);
 
-                if (feedbackState.TryGetValue(chatId, out bool isFeedback) && isFeedback)
+                if (FeedbackCommand.feedbackState.TryGetValue(chatId, out bool isFeedback) && isFeedback)
                 {
-                    feedbackState[chatId] = false;
+                    FeedbackCommand.feedbackState[chatId] = false;
                     await FeedbackCommand.HandleFeedbackResponseAsync(botClient, message, cancellationToken);
                     return;
                 }
 
-                if (versionInputState.TryGetValue(message.Chat.Id, out string? jobUrl))
+                if (DeployCommand.versionInputState.TryGetValue(message.Chat.Id, out string? jobUrl))
                 {
-                    await HandleVersionInputAsync(botClient, message, jobUrl, cancellationToken);
+                    await DeployCommand.HandleVersionInputAsync(botClient, message, jobUrl, cancellationToken);
                     return;
                 }
 
-                if (schedulingState.TryGetValue(message.Chat.Id, out string? state))
+                if (ScheduleJob.schedulingState.TryGetValue(message.Chat.Id, out string? state))
                 {
                     if (state.StartsWith("schedule_time_"))
                     {
@@ -199,7 +194,7 @@ namespace TelegramBot
                             await StatusCommand.ExecuteAsync(botClient, message, cancellationToken);
                             break;
                         case "/feedback":
-                            feedbackState[chatId] = true;
+                            FeedbackCommand.feedbackState[chatId] = true;
                             await FeedbackCommand.ExecuteAsync(botClient, message, cancellationToken);
                             break;
                     }
@@ -271,7 +266,7 @@ namespace TelegramBot
                 else if (data.StartsWith("enter_version_"))
                 {
                     var jobUrlId = data.Substring("enter_version_".Length);
-                    versionInputState[callbackQuery.Message.Chat.Id] = jobUrlId;
+                    DeployCommand.versionInputState[callbackQuery.Message.Chat.Id] = jobUrlId;
                     await botClient.SendTextMessageAsync(
                         callbackQuery.Message.Chat.Id,
                         "Vui lòng nhập tham số VERSION:",
@@ -358,27 +353,6 @@ namespace TelegramBot
                 {
                     LoggerService.LogError(sendEx, "Failed to send error callback answer to user");
                 }
-            }
-        }
-
-        private static async Task HandleVersionInputAsync(ITelegramBotClient botClient, Message message, string jobUrlId, CancellationToken cancellationToken)
-        {
-            var version = message.Text.Trim();
-            versionInputState.TryRemove(message.Chat.Id, out _);
-
-            var userRole = await CredentialService.GetUserRoleAsync(message.From.Id);
-            var jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
-            if (!string.IsNullOrEmpty(jobUrl))
-            {
-                // Update or create the job with the parameter
-                await JobService.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
-
-                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, version);
-                await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
-            }
-            else
-            {
-                await botClient.SendTextMessageAsync(message.Chat.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
             }
         }
 

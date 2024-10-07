@@ -248,7 +248,7 @@ namespace TelegramBot.Services
                 confirmationMessage,
                 cancellationToken: cancellationToken);
 
-            Program.schedulingState.TryRemove(message.Chat.Id, out _);
+            ScheduleJob.schedulingState.TryRemove(message.Chat.Id, out _);
         }
         #endregion
     }
