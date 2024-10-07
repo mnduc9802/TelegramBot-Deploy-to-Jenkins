@@ -23,6 +23,11 @@ DEVELOPER_PASSWORD=*******
 TESTER_USERNAME=*******
 TESTER_PASSWORD=*******
 
+Dùng một trong hai, không thể dùng song song
+//Database Local Info
+DATABASE_CONNECTION_STRING=*******
+
+//Database Server Info
 DATABASE_CONNECTION_STRING=*******
 ```
 ---
