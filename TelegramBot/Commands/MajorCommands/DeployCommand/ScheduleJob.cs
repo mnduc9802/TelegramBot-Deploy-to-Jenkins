@@ -104,12 +104,15 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 
         public static async Task HandleScheduleParameterInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
+            const int JOB_DETAILS_INDEX = 0; // Chỉ số của chuỗi chứa thông tin chi tiết về job
+            const int SCHEDULE_TIME_INDEX = 1; // Chỉ số của thời gian lên lịch
+            const int JOB_URL_ID_INDEX = 2; // Chỉ số của jobUrlId trong chuỗi jobParts
+
             string parameter = message.Text.Trim();
             string[] jobInfo = schedulingState[message.Chat.Id].Split('|');
-            string[] jobParts = jobInfo[0].Split('_');
-            const int JOB_URL_ID_INDEX = 2;
+            string[] jobParts = jobInfo[JOB_DETAILS_INDEX].Split('_');
             string jobUrlId = jobParts[JOB_URL_ID_INDEX];
-            DateTime scheduledTime = DateTime.Parse(jobInfo[1]);
+            DateTime scheduledTime = DateTime.Parse(jobInfo[SCHEDULE_TIME_INDEX]);
 
             string jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
 
