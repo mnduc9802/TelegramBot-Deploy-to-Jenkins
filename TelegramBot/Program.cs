@@ -229,7 +229,8 @@ namespace TelegramBot
                 var messageId = callbackQuery.Message.MessageId;
                 var data = callbackQuery.Data;
 
-                Console.WriteLine($"Received callback query data: {data}");
+
+                LoggerService.LogDebug("Received callback query. Data: {Data}, ChatId: {ChatId}", data, chatId);
 
                 if (data.StartsWith("deploy_"))
                 {
@@ -257,9 +258,23 @@ namespace TelegramBot
                 {
                     const int FOLDER_ID_START_INDEX = 7;
                     var folderId = data.Substring(FOLDER_ID_START_INDEX);
+                    var userId = callbackQuery.From?.Id ?? throw new ArgumentNullException(nameof(callbackQuery.From.Id));
+                    LoggerService.LogInformation("Processing folder callback. UserId: {UserId}, FolderId: {FolderId}", userId, folderId);
+
                     if (FolderKeyboardManager.folderPathMap.TryGetValue(folderId, out string? folderPath))
                     {
-                        await DeployCommand.ExecuteAsync(botClient, callbackQuery.Message, folderPath, cancellationToken);
+                        // Tạo Message mới với đầy đủ thông tin từ callback query
+                        var messageFromCallbackQuery = callbackQuery.Message;
+                        var newMessage = new Message
+                        {
+                            MessageId = messageFromCallbackQuery.MessageId,
+                            From = callbackQuery.From,  // Quan trọng: Sử dụng From từ callback query
+                            Chat = messageFromCallbackQuery.Chat,
+                            Date = messageFromCallbackQuery.Date
+                        };
+
+                        LoggerService.LogDebug("Created new message from callback. UserId: {UserId}, MessageId: {MessageId}", newMessage.From?.Id, newMessage.MessageId);
+                        await DeployCommand.ExecuteAsync(botClient, newMessage, folderPath, cancellationToken);
                         await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
                     }
                 }

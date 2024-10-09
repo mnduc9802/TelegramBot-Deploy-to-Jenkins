@@ -12,10 +12,12 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 {
     public class DeployJob
     {
-        public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
+        public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, long userId, CancellationToken cancellationToken)
         {
-            var userId = message.From?.Id ?? throw new ArgumentNullException(nameof(message.From.Id));
+            Console.WriteLine($"DeployJob.ExecuteAsync starting - UserId: {userId}, ProjectPath: {projectPath}");
+
             var userRole = await CredentialService.GetUserRoleAsync(userId);
+            Console.WriteLine($"DeployJob.ExecuteAsync - Retrieved role for userId: {userId}, Role: {userRole}");
 
             var initialMessage = await botClient.SendTextMessageAsync(
                 message.Chat.Id,
@@ -23,45 +25,54 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 cancellationToken: cancellationToken
             );
 
-            var jobs = await GetDeployableJobsAsync(projectPath, userRole);
+            try
+            {
+                var jobs = await GetDeployableJobsAsync(projectPath, userRole, userId);
+                Console.WriteLine($"DeployJob.ExecuteAsync - Found {jobs.Count} jobs for userId: {userId}");
 
-            if (jobs.Count == 0)
-            {
-                await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
-                await botClient.SendTextMessageAsync(
-                    message.Chat.Id,
-                    $"Không tìm thấy job có thể triển khai trong {projectPath}.",
-                    cancellationToken: cancellationToken
-                );
+                if (jobs.Count == 0)
+                {
+                    await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
+                    await botClient.SendTextMessageAsync(
+                        message.Chat.Id,
+                        $"Không tìm thấy job có thể triển khai trong {projectPath}.",
+                        cancellationToken: cancellationToken
+                    );
+                }
+                else if (jobs.Count == 1)
+                {
+                    await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
+                    var jobUrlId = await JobService.GetOrCreateJobUrlId(jobs[0].Url, userId);
+                    await DeployConfirmation.JobDeployConfirmationKeyboard(
+                        botClient,
+                        message.Chat.Id,
+                        jobUrlId.ToString(),
+                        jobs[0].JobName.EndsWith("_parameter"),
+                        cancellationToken
+                    );
+                }
+                else
+                {
+                    await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
+                    JobPaginator.chatState[message.Chat.Id] = (jobs, projectPath);
+                    await JobPaginator.ShowJobsPage(
+                        botClient,
+                        message.Chat.Id,
+                        jobs,
+                        0,
+                        projectPath,
+                        cancellationToken
+                    );
+                }
             }
-            else if (jobs.Count == 1)
+            catch (Exception ex)
             {
-                await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
-                var jobUrlId = await JobService.GetOrCreateJobUrlId(jobs[0].Url, userId);
-                await DeployConfirmation.JobDeployConfirmationKeyboard(
-                    botClient,
-                    message.Chat.Id,
-                    jobUrlId.ToString(),
-                    jobs[0].JobName.EndsWith("_parameter"),
-                    cancellationToken
-                );
-            }
-            else
-            {
-                await botClient.DeleteMessageAsync(message.Chat.Id, initialMessage.MessageId, cancellationToken);
-                JobPaginator.chatState[message.Chat.Id] = (jobs, projectPath);
-                await JobPaginator.ShowJobsPage(
-                    botClient,
-                    message.Chat.Id,
-                    jobs,
-                    0,
-                    projectPath,
-                    cancellationToken
-                );
+                Console.WriteLine($"Error in DeployJob.ExecuteAsync for userId {userId}: {ex.Message}");
+                throw;
             }
         }
 
-        private static async Task<List<Job>> GetDeployableJobsAsync(string folderPath, string userRole)
+        private static async Task<List<Job>> GetDeployableJobsAsync(string folderPath, string userRole, long userId)
         {
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
             using var client = new HttpClient { BaseAddress = new Uri(jenkinsUrl) };
@@ -71,8 +82,12 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             return await GetJobsRecursivelyAsync(client, folderPath, folderPath);
         }
 
-        public static async Task<bool> DeployProjectAsync(string projectPath, string userRole, string? parameter = null)
+        public static async Task<bool> DeployProjectAsync(string projectPath, string userRole, long userId, string? parameter = null)
         {
+            var folderPath = Path.GetDirectoryName(projectPath)?.Replace("job/", "");
+            var jobName = Path.GetFileName(projectPath);
+            LoggerService.LogInformation("Starting deployment. JobName: {JobName}, FolderPath: {FolderPath}, Parameter: {Parameter}, UserId: {UserId}, UserRole: {UserRole}", jobName, folderPath, parameter ?? "none", userId, userRole);
+
             try
             {
                 string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
@@ -81,7 +96,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                 var byteArray = Encoding.ASCII.GetBytes($"{credentials.Username}:{credentials.Password}");
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
-                Console.WriteLine($"Attempting to deploy project: {projectPath}");
+                Console.WriteLine($"Attempting to deploy project: {projectPath} for userId: {userId}");
 
                 var crumbResponse = await client.GetAsync("/crumbIssuer/api/json");
                 if (!crumbResponse.IsSuccessStatusCode)
@@ -105,18 +120,17 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
                     url += $"WithParameters?VERSION={parameter}";
                 }
 
-                Console.WriteLine($"Sending request to: {client.BaseAddress}{url}");
+                LoggerService.LogDebug("Sending deploy request. JobName: {JobName}, FolderPath: {FolderPath}, Url: {Url}", jobName, folderPath, url);
                 var response = await client.PostAsync(url, null);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"Deployment failed. Status code: {response.StatusCode}");
-                    Console.WriteLine($"Response content: {await response.Content.ReadAsStringAsync()}");
+                    LoggerService.LogWarning("Deployment failed. JobName: {JobName}, FolderPath: {FolderPath}, StatusCode: {StatusCode}, Response: {Response}", jobName, folderPath, response.StatusCode, await response.Content.ReadAsStringAsync());
                     return false;
                 }
                 else
                 {
-                    Console.WriteLine("Deployment request sent successfully.");
+                    LoggerService.LogInformation("Deployment request sent successfully. JobName: {JobName}, FolderPath: {FolderPath}, UserId: {UserId}", jobName, folderPath, userId);
 
                     await JobService.ResetJobsTableIfNeeded();
 
@@ -125,8 +139,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Deployment failed: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                LoggerService.LogError(ex, "Deployment failed. JobName: {JobName}, FolderPath: {FolderPath}, UserId: {UserId}", jobName, folderPath, userId);
                 return false;
             }
         }

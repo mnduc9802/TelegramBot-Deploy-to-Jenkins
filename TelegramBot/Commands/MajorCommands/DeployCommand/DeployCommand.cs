@@ -10,9 +10,26 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
     public class DeployCommand
     {
         public static ConcurrentDictionary<long, string> versionInputState = new ConcurrentDictionary<long, string>();
+
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, string projectPath, CancellationToken cancellationToken)
         {
-            await DeployJob.ExecuteAsync(botClient, message, projectPath, cancellationToken);
+            if (message.From == null)
+            {
+                throw new ArgumentException("Message.From cannot be null", nameof(message));
+            }
+
+            var userId = message.From.Id;
+            LoggerService.LogInformation("Starting deploy command execution. UserId: {UserId}, ProjectPath: {ProjectPath}", userId, projectPath);
+
+            try
+            {
+                await DeployJob.ExecuteAsync(botClient, message, projectPath, userId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                LoggerService.LogError(ex, "Error executing deploy command. UserId: {UserId}", userId);
+                throw;
+            }
         }
 
         public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
@@ -24,8 +41,9 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
 
             var chatId = callbackQuery.Message.Chat.Id;
-            const long UNKNOWN_USER_ID = 0;
-            var userId = callbackQuery.From?.Id ?? UNKNOWN_USER_ID;
+            // Always use the original caller's userId
+            var userId = callbackQuery.From?.Id ?? throw new ArgumentNullException(nameof(callbackQuery.From.Id));
+            Console.WriteLine($"HandleCallbackQueryAsync - Using userId: {userId}");
             var userRole = await CredentialService.GetUserRoleAsync(userId);
 
             if (callbackQuery.Data?.StartsWith("deploy_") == true)
@@ -54,7 +72,7 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             {
                 var jobUrl = callbackQuery.Data.Replace("confirm_job_yes_", "");
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
-                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole);
+                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, userId);
                 await SendDeployResultAsync(botClient, chatId, jobUrl, deployResult, cancellationToken);
             }
             else if (callbackQuery.Data == "confirm_job_no")
@@ -72,47 +90,52 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
         }
 
-
-        public static async Task HandleDeployCallback(ITelegramBotClient botClient,CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        public static async Task HandleDeployCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
-            const int DEPLOY_PREFIX_LENGTH = 7; // Chiều dài tiền tố "deploy_"
+            const int DEPLOY_PREFIX_LENGTH = 7;
             var data = callbackQuery.Data?.Substring(DEPLOY_PREFIX_LENGTH);
-            Console.WriteLine($"Callback data: {data}");
+            var userId = callbackQuery.From?.Id ?? throw new ArgumentNullException(nameof(callbackQuery.From.Id));
+            Console.WriteLine($"HandleDeployCallback - Using userId: {userId} for data: {data}");
 
             if (int.TryParse(data, out int projectIndex))
             {
-                Console.WriteLine($"Project Index: {projectIndex}");
+                Console.WriteLine($"Project Index: {projectIndex}, UserId: {userId}");
                 await DeployConfirmation.DeployConfirmationKeyboard(botClient, callbackQuery, projectIndex, cancellationToken);
             }
             else
             {
-                Console.WriteLine("Delegating to DeployCommand");
+                Console.WriteLine($"Delegating to HandleCallbackQueryAsync, UserId: {userId}");
                 await HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
         }
 
         public static async Task HandleVersionInputAsync(ITelegramBotClient botClient, Message message, string jobUrlId, CancellationToken cancellationToken)
         {
+            var userId = message.From?.Id ?? throw new ArgumentNullException(nameof(message.From.Id));
             var version = message.Text.Trim();
             versionInputState.TryRemove(message.Chat.Id, out _);
 
-            var userRole = await CredentialService.GetUserRoleAsync(message.From.Id);
+            var userRole = await CredentialService.GetUserRoleAsync(userId);
             var jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
             if (!string.IsNullOrEmpty(jobUrl))
             {
-                // Update or create the job with the parameter
-                await JobService.GetOrCreateJobUrlId(jobUrl, message.From.Id, version);
+                // Thêm log cho folder path và job name
+                var folderPath = Path.GetDirectoryName(jobUrl)?.Replace("job/", "");
+                var jobName = Path.GetFileName(jobUrl);
+                LoggerService.LogInformation("Processing version input for deployment. JobName: {JobName}, FolderPath: {FolderPath}, Version: {Version}, UserId: {UserId}", jobName, folderPath, version, userId);
 
-                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, version);
-                await DeployCommand.SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
+                await JobService.GetOrCreateJobUrlId(jobUrl, userId, version);
+                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, userId, version);
+                await SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
             }
             else
             {
+                LoggerService.LogWarning("Job URL not found for deployment. JobUrlId: {JobUrlId}, UserId: {UserId}", jobUrlId, userId);
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Không tìm thấy thông tin job", cancellationToken: cancellationToken);
             }
         }
 
-        public static async Task ShowProjectsKeyboard(ITelegramBotClient botClient,long chatId, long userId, CancellationToken cancellationToken)
+        public static async Task ShowProjectsKeyboard(ITelegramBotClient botClient, long chatId, long userId, CancellationToken cancellationToken)
         {
             var userRole = await CredentialService.GetUserRoleAsync(userId);
             Console.WriteLine($"Fetching Jenkins projects for userId: {userId} with role: {userRole}");
@@ -133,15 +156,20 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
         }
 
-        public static string NormalizeJenkinsPath(string projectPath)
+        public static async Task SendDeployResultAsync(ITelegramBotClient botClient, long userId, string project, bool success, CancellationToken cancellationToken)
         {
-            return string.Join("/job/", projectPath.Split(new[] { "job/" }, StringSplitOptions.RemoveEmptyEntries));
-        }
+            var folderPath = Path.GetDirectoryName(project)?.Replace("job/", "");
+            var jobName = Path.GetFileName(project);
 
-        public static async Task SendDeployResultAsync(ITelegramBotClient botClient, long chatId, string project, bool success, CancellationToken cancellationToken)
-        {
-            var resultMessage = success ? $"Triển khai {project} thành công!" : $"Triển khai {project} thất bại.";
-            await botClient.SendTextMessageAsync(chatId, resultMessage, cancellationToken: cancellationToken);
+            var resultMessage = success
+                ? $"Triển khai {project} thành công!"
+                : $"Triển khai {project} thất bại.";
+
+            LoggerService.LogInformation(
+                "Deploy result. JobName: {JobName}, FolderPath: {FolderPath}, Success: {Success}, UserId: {UserId}",
+                jobName, folderPath, success, userId);
+
+            await botClient.SendTextMessageAsync(userId, resultMessage, cancellationToken: cancellationToken);
         }
     }
 }

@@ -15,7 +15,6 @@ namespace TelegramBot.Utilities.DeployUtilities
             var userRole = await CredentialService.GetUserRoleAsync(userId);
             var projects = await JenkinsProject.GetJenkinsProjectsAsync(userId, userRole);
 
-            // Kiểm tra nếu danh sách projects không rỗng và projectIndex hợp lệ
             if (projects == null || !projects.Any() || projectIndex < 0 || projectIndex >= projects.Count)
             {
                 await botClient.SendTextMessageAsync(
@@ -120,7 +119,7 @@ namespace TelegramBot.Utilities.DeployUtilities
             var jobUrl = await JobService.GetJobUrlFromId(jobUrlId);
             if (jobUrl != null)
             {
-                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole);
+                var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, userId);
                 await DeployCommand.SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken);
             }
             else

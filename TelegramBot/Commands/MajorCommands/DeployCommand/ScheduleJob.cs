@@ -13,13 +13,24 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
         {
             try
             {
+                var folderPath = Path.GetDirectoryName(jobName)?.Replace("job/", "");
+                LoggerService.LogInformation("Executing scheduled deployment. JobName: {JobName}, FolderPath: {FolderPath}, Parameter: {Parameter}, UserId: {UserId}",
+                    Path.GetFileName(jobName), folderPath, parameter ?? "none", userId);
+
                 Console.WriteLine($"Attempting to deploy job: {jobName} for user {userId} with parameter: {parameter ?? "None"}");
                 var userRole = await CredentialService.GetUserRoleAsync(userId);
-                var deployResult = await DeployJob.DeployProjectAsync(jobName, userRole, parameter);
+                var deployResult = await DeployJob.DeployProjectAsync(jobName, userRole, userId, parameter);
                 Console.WriteLine($"Deploy result for {jobName}: {deployResult}");
+
+                if (!deployResult)
+                {
+                    LoggerService.LogWarning("Scheduled deployment failed. JobName: {JobName}, FolderPath: {FolderPath}, UserId: {UserId}",
+                        Path.GetFileName(jobName), folderPath, userId);
+                }
             }
             catch (Exception ex)
             {
+                LoggerService.LogError(ex, "Error executing scheduled job. JobName: {JobName}, UserId: {UserId}", jobName, userId);
                 Console.WriteLine($"Error executing scheduled job {jobName}: {ex.Message}");
             }
         }
@@ -28,7 +39,6 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
         {
             var jobUrlId = callbackQuery.Data.Replace("schedule_job_", "");
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
-
             await RequestScheduleTimeAsync(botClient, callbackQuery.Message.Chat.Id, jobUrlId, cancellationToken);
         }
 
@@ -73,11 +83,14 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             }
 
             string[] parts = schedulingState[message.Chat.Id].Split('_');
-            const int JOB_URL_ID_INDEX = 2; // Vị trí của jobUrlId trong mảng parts
+            const int JOB_URL_ID_INDEX = 2;
             string jobUrlId = parts[JOB_URL_ID_INDEX];
 
             var jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
             bool hasParameter = jobUrl.EndsWith("_parameter");
+
+            LoggerService.LogInformation("Schedule time set for job. JobUrl: {JobUrl}, ScheduledTime: {ScheduledTime}, HasParameter: {HasParameter}, UserId: {UserId}",
+                jobUrl, scheduledTime, hasParameter, message.From.Id);
 
             if (hasParameter)
             {
@@ -91,18 +104,17 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
 
         public static async Task HandleScheduleParameterInputAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
-            const int JOB_DETAILS_INDEX = 0; // Chỉ số của chuỗi chứa thông tin chi tiết về job
-            const int SCHEDULE_TIME_INDEX = 1; // Chỉ số của thời gian lên lịch
-            const int JOB_URL_ID_INDEX = 2; // Chỉ số của jobUrlId trong chuỗi jobParts
-
             string parameter = message.Text.Trim();
             string[] jobInfo = schedulingState[message.Chat.Id].Split('|');
-            string[] jobParts = jobInfo[JOB_DETAILS_INDEX].Split('_');
+            string[] jobParts = jobInfo[0].Split('_');
+            const int JOB_URL_ID_INDEX = 2;
             string jobUrlId = jobParts[JOB_URL_ID_INDEX];
-            DateTime scheduledTime = DateTime.Parse(jobInfo[SCHEDULE_TIME_INDEX]);
+            DateTime scheduledTime = DateTime.Parse(jobInfo[1]);
 
-            // Fetch the correct job URL using the jobUrlId
             string jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
+
+            LoggerService.LogInformation("Parameter set for scheduled job. JobUrl: {JobUrl}, Parameter: {Parameter}, ScheduledTime: {ScheduledTime}, UserId: {UserId}",
+                jobUrl, parameter, scheduledTime, message.From.Id);
 
             await JobService.HandleScheduleInputAsync(botClient, message, jobUrl, scheduledTime, parameter, cancellationToken);
         }
