@@ -8,8 +8,11 @@
 //Telegram API
 TELEGRAM_BOT_TOKEN=*******
 
-//My Telegram Chat Id (Dùng để gửi feedback)
+//My Telegram Chat Id (Dùng cho lệnh /feedback)
 MY_TELEGRAM_CHAT_ID=*******
+
+//Group Telegram Chat Id (Dùng cho lệnh /notify)
+GROUP_TELEGRAM_CHAT_ID=*******
 
 //Jenkins Info
 JENKINS_URL=*******
