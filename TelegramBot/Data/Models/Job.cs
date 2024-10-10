@@ -1,4 +1,4 @@
-﻿namespace TelegramBot.Models
+﻿namespace TelegramBot.Data.Models
 {
     public class Job
     {

@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBot.DbContext;
+using TelegramBot.Data.DbContext;
 using TelegramBot.Utilities.EnvironmentUtilities;
 
 namespace TelegramBot.Commands.MinorCommands

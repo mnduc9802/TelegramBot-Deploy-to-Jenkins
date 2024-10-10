@@ -1,7 +1,7 @@
 ﻿using Npgsql;
 using System.Data;
 
-namespace TelegramBot.DbContext
+namespace TelegramBot.Data.DbContext
 {
     public class DatabaseConnection
     {

@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBot.Models;
+using TelegramBot.Data.Models;
 
 namespace TelegramBot.Utilities.DeployUtilities
 {

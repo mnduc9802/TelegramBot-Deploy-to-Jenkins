@@ -3,10 +3,10 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using TelegramBot.Utilities.DeployUtilities;
 using System.Net.Http.Headers;
-using TelegramBot.Models;
 using Newtonsoft.Json.Linq;
 using TelegramBot.Utilities.EnvironmentUtilities;
 using TelegramBot.Services;
+using TelegramBot.Data.Models;
 
 namespace TelegramBot.Commands.MajorCommands.DeployCommand
 {
