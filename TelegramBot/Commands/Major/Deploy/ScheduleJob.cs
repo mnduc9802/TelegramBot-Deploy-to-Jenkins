@@ -1,8 +1,8 @@
-﻿using Telegram.Bot.Types;
-using Telegram.Bot;
-using System.Data;
-using TelegramBot.Services;
+﻿using System.Data;
 using System.Collections.Concurrent;
+using Telegram.Bot;
+using Telegram.Bot.Types;
+using TelegramBot.Services;
 
 namespace TelegramBot.Commands.MajorCommands.DeployCommand
 {

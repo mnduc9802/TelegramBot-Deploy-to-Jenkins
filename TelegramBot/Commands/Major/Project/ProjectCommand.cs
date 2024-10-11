@@ -1,6 +1,6 @@
-﻿using Telegram.Bot;
+﻿using System.Data;
+using Telegram.Bot;
 using Telegram.Bot.Types;
-using System.Data;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Services;
 

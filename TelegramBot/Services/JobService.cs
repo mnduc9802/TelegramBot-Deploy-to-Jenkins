@@ -1,11 +1,11 @@
 ﻿using System.Data;
 using System.Timers;
-using Telegram.Bot.Types;
 using Telegram.Bot;
-using TelegramBot.Data.DbContext;
-using TelegramBot.Utilities.EnvironmentUtilities;
+using Telegram.Bot.Types;
 using TelegramBot.Commands.MajorCommands.DeployCommand;
+using TelegramBot.Data.DbContext;
 using TelegramBot.Data.Models;
+using TelegramBot.Utilities.EnvironmentUtilities;
 
 namespace TelegramBot.Services
 {

@@ -1,9 +1,9 @@
 ﻿using System.Data;
-using Telegram.Bot.Types;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using TelegramBot.Data.DbContext;
-using TelegramBot.Commands.MajorCommands.DeployCommand;
 using TelegramBot.Data.Models;
+using TelegramBot.Commands.MajorCommands.DeployCommand;
 
 namespace TelegramBot.Commands.MajorCommands.ProjectCommand
 {
