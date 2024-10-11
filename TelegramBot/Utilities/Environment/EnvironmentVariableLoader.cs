@@ -10,7 +10,7 @@ namespace TelegramBot.Utilities.Environment
         }
         private static string GetEnvironmentVariable(string name)
         {
-            var value = GetEnvironmentVariable(name);
+            var value = System.Environment.GetEnvironmentVariable(name);
             return value ?? throw new InvalidOperationException($"{name} environment variable is not set.");
         }
 
