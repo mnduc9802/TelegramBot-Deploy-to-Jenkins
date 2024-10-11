@@ -1,15 +1,15 @@
-﻿using Telegram.Bot.Exceptions;
-using Telegram.Bot.Polling;
-using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types;
+﻿using System.Net.Sockets;
 using Telegram.Bot;
-using TelegramBot.Utilities.DeployUtilities;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Exceptions;
+using Telegram.Bot.Polling;
 using TelegramBot.Commands.MajorCommands.DeployCommand;
 using TelegramBot.Commands.MajorCommands.ProjectCommand;
 using TelegramBot.Commands.MinorCommands;
-using TelegramBot.Utilities.EnvironmentUtilities;
 using TelegramBot.Services;
-using System.Net.Sockets;
+using TelegramBot.Utilities.DeployUtilities;
+using TelegramBot.Utilities.EnvironmentUtilities;
 
 namespace TelegramBot
 {

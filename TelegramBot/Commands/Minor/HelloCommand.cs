@@ -1,5 +1,6 @@
-﻿using Telegram.Bot.Types;
-using Telegram.Bot;
+﻿using Telegram.Bot;
+using Telegram.Bot.Types;
+using TelegramBot.Services;
 
 namespace TelegramBot.Commands.MinorCommands
 {
@@ -9,16 +10,22 @@ namespace TelegramBot.Commands.MinorCommands
         {
             var user = message.From;
 
-            // Lấy thông tin username, first name, last name
-            string username = user?.Username;
-            string fullName = $"{user?.FirstName} {user?.LastName}".Trim();
+            // Kiểm tra xem thông tin người dùng có tồn tại không
+            if (user == null)
+            {
+                await botClient.SendTextMessageAsync(
+                    chatId: message.Chat.Id,
+                    text: "Xin chào! Vui lòng bấm vào Menu để thực hiện các yêu cầu.\n Nếu bạn không thấy Menu, hãy /help để hiển thị trợ giúp.\n - Telegram Bot by mnduc9802",
+                    cancellationToken: cancellationToken);
+                return;
+            }
 
-            // Tạo tin nhắn trả lời với kiểm tra username
-            string replyMessage = !string.IsNullOrEmpty(username)
-                ? $"Xin chào {username}, {fullName}! Vui lòng bấm vào Menu để thực hiện các yêu cầu.\n - Telegram Bot by mnduc9802"
-                : $"Xin chào, {fullName}! Vui lòng bấm vào Menu để thực hiện các yêu cầu.\n - Telegram Bot by mnduc9802";
+            // Xử lý nếu có thông tin người dùng
+            string userIdentifier = UserService.GetUserIdentifier(message.Chat);
+            string fullName = UserService.GetFullName(user);
 
-            // Gửi tin nhắn trả lời lại người dùng
+            string replyMessage = $"Xin chào {userIdentifier}! Vui lòng bấm vào Menu hoặc dấu [/] ở góc phải, để thực hiện các yêu cầu.\nNếu bạn không thấy Menu, hãy /help để hiển thị trợ giúp.\n - Telegram Bot by mnduc9802";
+
             await botClient.SendTextMessageAsync(
                 chatId: message.Chat.Id,
                 text: replyMessage,

@@ -156,20 +156,27 @@ namespace TelegramBot.Commands.MajorCommands.DeployCommand
             await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
         }
 
-        public static async Task SendDeployResultAsync(ITelegramBotClient botClient, long userId, string project, bool success, CancellationToken cancellationToken)
+        public static async Task SendDeployResultAsync(ITelegramBotClient botClient, long chatId, string project, bool success, CancellationToken cancellationToken)
         {
             var folderPath = Path.GetDirectoryName(project)?.Replace("job/", "");
             var jobName = Path.GetFileName(project);
 
+            // Get user information
+            var user = await botClient.GetChatAsync(chatId, cancellationToken);
+            string userIdentifier = UserService.GetUserIdentifier(user);
+
             var resultMessage = success
-                ? $"Triển khai {project} thành công!"
-                : $"Triển khai {project} thất bại.";
+                ? $"{userIdentifier} Triển khai {project} thành công!"
+                : $"{userIdentifier} Triển khai {project} thất bại.";
 
             LoggerService.LogInformation(
-                "Deploy result. JobName: {JobName}, FolderPath: {FolderPath}, Success: {Success}, UserId: {UserId}",
-                jobName, folderPath, success, userId);
+                "Deploy result. User: {User}, JobName: {JobName}, FolderPath: {FolderPath}, Success: {Success}, ChatId: {ChatId}",
+                userIdentifier, jobName, folderPath, success, chatId);
 
-            await botClient.SendTextMessageAsync(userId, resultMessage, cancellationToken: cancellationToken);
+            await botClient.SendTextMessageAsync(
+                chatId: chatId,
+                text: resultMessage,
+                cancellationToken: cancellationToken);
         }
     }
 }
