@@ -306,6 +306,9 @@ namespace TelegramBot
 
         private static async Task ProcessCallbackData(ITelegramBotClient botClient, CallbackQuery callbackQuery, string data, long chatId, int messageId, CancellationToken cancellationToken)
         {
+
+            LoggerService.LogDebug("Received callback query. Data: {Data}, ChatId: {ChatId}", data, chatId);
+
             if (data.StartsWith("deploy_"))
             {
                 await DeployCommand.HandleDeployCallback(botClient, callbackQuery, cancellationToken);
@@ -318,6 +321,8 @@ namespace TelegramBot
             {
                 await ProjectCommand.ShowProjects(botClient, chatId, callbackQuery.From.Id, cancellationToken);
             }
+
+            //Folder
             else if (data.StartsWith("folderpage_"))
             {
                 await FolderPaginator.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
@@ -334,6 +339,8 @@ namespace TelegramBot
             {
                 await HandleEnterVersionCallback(botClient, callbackQuery, data, cancellationToken);
             }
+
+            //Job
             else if (data == "search")
             {
                 await JobFinder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
@@ -346,6 +353,8 @@ namespace TelegramBot
             {
                 await HandleBackToJobsCallback(botClient, callbackQuery, cancellationToken);
             }
+
+            //Scheduled Job
             else if (data.StartsWith("schedule_job_"))
             {
                 await ScheduleJob.HandleScheduleJobAsync(botClient, callbackQuery, cancellationToken);
@@ -354,6 +363,8 @@ namespace TelegramBot
             {
                 await ProjectCommand.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
+
+            //Confirmation Folder/Job
             else if (data.StartsWith("confirm_yes_"))
             {
                 await DeployConfirmation.HandleConfirmYesCallback(botClient, callbackQuery, cancellationToken);
