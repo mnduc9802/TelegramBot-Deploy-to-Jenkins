@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using TelegramBot.Utilities.EnvironmentUtilities;
 
-namespace TelegramBot.Commands.MinorCommands
+namespace TelegramBot.Commands.Minor
 {
     public class NotifyCommand
     {

@@ -2,7 +2,7 @@
 using System.Timers;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBot.Commands.MajorCommands.DeployCommand;
+using TelegramBot.Commands.Major.DeployCommand;
 using TelegramBot.Data.DbContext;
 using TelegramBot.Data.Models;
 using TelegramBot.Utilities.EnvironmentUtilities;

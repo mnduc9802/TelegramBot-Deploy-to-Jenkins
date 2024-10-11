@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using Newtonsoft.Json.Linq;
 using TelegramBot.Utilities.EnvironmentUtilities;
 
-namespace TelegramBot.Commands.MajorCommands.ProjectCommand
+namespace TelegramBot.Commands.Major.ProjectCommand
 {
     public class JenkinsProject
     {

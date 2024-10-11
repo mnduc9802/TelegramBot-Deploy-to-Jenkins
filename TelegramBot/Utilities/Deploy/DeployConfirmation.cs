@@ -1,8 +1,8 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using TelegramBot.Commands.MajorCommands.DeployCommand;
-using TelegramBot.Commands.MajorCommands.ProjectCommand;
+using TelegramBot.Commands.Major.DeployCommand;
+using TelegramBot.Commands.Major.ProjectCommand;
 using TelegramBot.Services;
 
 namespace TelegramBot.Utilities.DeployUtilities

@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using TelegramBot.Utilities.ClearUtilities;
 
-namespace TelegramBot.Commands.MinorCommands
+namespace TelegramBot.Commands.Minor
 {
     public class ClearCommand
     {

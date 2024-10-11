@@ -3,9 +3,9 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.Data.DbContext;
 using TelegramBot.Data.Models;
-using TelegramBot.Commands.MajorCommands.DeployCommand;
+using TelegramBot.Commands.Major.DeployCommand;
 
-namespace TelegramBot.Commands.MajorCommands.ProjectCommand
+namespace TelegramBot.Commands.Major.ProjectCommand
 {
     public class ListScheduleJob
     {

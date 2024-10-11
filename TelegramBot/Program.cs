@@ -4,9 +4,9 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
-using TelegramBot.Commands.MajorCommands.DeployCommand;
-using TelegramBot.Commands.MajorCommands.ProjectCommand;
-using TelegramBot.Commands.MinorCommands;
+using TelegramBot.Commands.Major.DeployCommand;
+using TelegramBot.Commands.Major.ProjectCommand;
+using TelegramBot.Commands.Minor;
 using TelegramBot.Services;
 using TelegramBot.Utilities.DeployUtilities;
 using TelegramBot.Utilities.EnvironmentUtilities;
@@ -235,27 +235,30 @@ namespace TelegramBot
                     case "/hello":
                         await HelloCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
-                    case "/notify":
-                        await NotifyCommand.ExecuteAsync(botClient, message, cancellationToken);
+                    case "/projects":
+                        await ProjectCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/deploy":
                         await DeployCommand.ShowProjectsKeyboard(botClient, message.Chat.Id, message.From.Id, cancellationToken);
                         break;
-                    case "/projects":
-                        await ProjectCommand.ExecuteAsync(botClient, message, cancellationToken);
+                    case "/myinfo":
+                        await MyInfoCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/clear":
                         await ClearCommand.ClearConfirmationKeyboard(botClient, message.Chat.Id, cancellationToken);
                         break;
-                    case "/help":
-                        await HelpCommand.ExecuteAsync(botClient, message, cancellationToken);
-                        break;
                     case "/status":
                         await StatusCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                    case "/notify":
+                        await NotifyCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                     case "/feedback":
                         FeedbackCommand.feedbackState[message.Chat.Id] = true;
                         await FeedbackCommand.ExecuteAsync(botClient, message, cancellationToken);
+                        break;
+                    case "/help":
+                        await HelpCommand.ExecuteAsync(botClient, message, cancellationToken);
                         break;
                 }
             }

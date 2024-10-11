@@ -1,11 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBot.Commands.MajorCommands.ProjectCommand;
+using TelegramBot.Commands.Major.ProjectCommand;
 using TelegramBot.Services;
 using TelegramBot.Utilities.DeployUtilities;
 
-namespace TelegramBot.Commands.MajorCommands.DeployCommand
+namespace TelegramBot.Commands.Major.DeployCommand
 {
     public class DeployCommand
     {

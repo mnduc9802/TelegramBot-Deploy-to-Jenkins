@@ -8,7 +8,7 @@ using TelegramBot.Services;
 using TelegramBot.Utilities.DeployUtilities;
 using TelegramBot.Utilities.EnvironmentUtilities;
 
-namespace TelegramBot.Commands.MajorCommands.DeployCommand
+namespace TelegramBot.Commands.Major.DeployCommand
 {
     public class DeployJob
     {

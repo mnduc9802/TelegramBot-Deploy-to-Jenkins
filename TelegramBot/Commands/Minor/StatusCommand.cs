@@ -1,7 +1,7 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace TelegramBot.Commands.MinorCommands
+namespace TelegramBot.Commands.Minor
 {
     public class StatusCommand
     {
