@@ -5,10 +5,10 @@ using Telegram.Bot.Types;
 using Newtonsoft.Json.Linq;
 using TelegramBot.Data.Models;
 using TelegramBot.Services;
-using TelegramBot.Utilities.DeployUtilities;
-using TelegramBot.Utilities.EnvironmentUtilities;
+using TelegramBot.Utilities.Deploy;
+using TelegramBot.Utilities.Environment;
 
-namespace TelegramBot.Commands.Major.DeployCommand
+namespace TelegramBot.Commands.Major.Deploy
 {
     public class DeployJob
     {

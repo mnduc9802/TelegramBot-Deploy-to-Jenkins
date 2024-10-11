@@ -1,11 +1,11 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using TelegramBot.Commands.Major.DeployCommand;
-using TelegramBot.Commands.Major.ProjectCommand;
+using TelegramBot.Commands.Major.Deploy;
+using TelegramBot.Commands.Major.Project;
 using TelegramBot.Services;
 
-namespace TelegramBot.Utilities.DeployUtilities
+namespace TelegramBot.Utilities.Deploy
 {
     public static class DeployConfirmation
     {

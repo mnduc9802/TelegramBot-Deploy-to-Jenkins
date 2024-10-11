@@ -1,5 +1,5 @@
 ﻿using TelegramBot.Data.DbContext;
-using TelegramBot.Utilities.EnvironmentUtilities;
+using TelegramBot.Utilities.Environment;
 
 namespace TelegramBot.Services
 {

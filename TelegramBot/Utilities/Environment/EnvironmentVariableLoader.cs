@@ -1,6 +1,6 @@
 ﻿using dotenv.net;
 
-namespace TelegramBot.Utilities.EnvironmentUtilities
+namespace TelegramBot.Utilities.Environment
 {
     public static class EnvironmentVariableLoader
     {
@@ -10,7 +10,7 @@ namespace TelegramBot.Utilities.EnvironmentUtilities
         }
         private static string GetEnvironmentVariable(string name)
         {
-            var value = Environment.GetEnvironmentVariable(name);
+            var value = GetEnvironmentVariable(name);
             return value ?? throw new InvalidOperationException($"{name} environment variable is not set.");
         }
 
@@ -42,8 +42,8 @@ namespace TelegramBot.Utilities.EnvironmentUtilities
 
         public static (string Username, string Password) GetCredentials(string prefix)
         {
-            var username = Environment.GetEnvironmentVariable($"{prefix}_USERNAME");
-            var password = Environment.GetEnvironmentVariable($"{prefix}_PASSWORD");
+            var username = GetEnvironmentVariable($"{prefix}_USERNAME");
+            var password = GetEnvironmentVariable($"{prefix}_PASSWORD");
 
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {

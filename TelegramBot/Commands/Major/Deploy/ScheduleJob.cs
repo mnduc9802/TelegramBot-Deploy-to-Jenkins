@@ -4,7 +4,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBot.Services;
 
-namespace TelegramBot.Commands.Major.DeployCommand
+namespace TelegramBot.Commands.Major.Deploy
 {
     public class ScheduleJob
     {

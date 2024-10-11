@@ -1,9 +1,9 @@
 ﻿using System.Text;
 using System.Net.Http.Headers;
 using Newtonsoft.Json.Linq;
-using TelegramBot.Utilities.EnvironmentUtilities;
+using TelegramBot.Utilities.Environment;
 
-namespace TelegramBot.Commands.Major.ProjectCommand
+namespace TelegramBot.Commands.Major.Project
 {
     public class JenkinsProject
     {

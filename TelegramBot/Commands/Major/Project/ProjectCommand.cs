@@ -4,7 +4,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Services;
 
-namespace TelegramBot.Commands.Major.ProjectCommand
+namespace TelegramBot.Commands.Major.Project
 {
     public class ProjectCommand
     {

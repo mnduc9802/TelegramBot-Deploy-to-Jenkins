@@ -4,12 +4,12 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
-using TelegramBot.Commands.Major.DeployCommand;
-using TelegramBot.Commands.Major.ProjectCommand;
+using TelegramBot.Commands.Major.Deploy;
+using TelegramBot.Commands.Major.Project;
 using TelegramBot.Commands.Minor;
 using TelegramBot.Services;
-using TelegramBot.Utilities.DeployUtilities;
-using TelegramBot.Utilities.EnvironmentUtilities;
+using TelegramBot.Utilities.Deploy;
+using TelegramBot.Utilities.Environment;
 
 namespace TelegramBot
 {
