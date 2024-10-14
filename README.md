@@ -3,7 +3,7 @@
 ## :warning: QUAN TRỌNG
 
 1. API CỦA BOT ĐƯỢC TẠO RA BỞI @BOTFATHER
-2. TẠO FILE .env TRONG THƯ MỤC CHỨA FILE Program.cs ĐỂ TẠO BIẾN MÔI TRƯỜNG VỚI CẤU TRÚC SAU:
+2. TẠO FILE .env TRONG THƯ MỤC CÙNG CẤP VỚI src ĐỂ TẠO BIẾN MÔI TRƯỜNG VỚI CẤU TRÚC SAU:
 ```
 //Telegram API
 TELEGRAM_BOT_TOKEN=*******
