@@ -21,12 +21,14 @@ namespace TelegramBot.Commands.Minor
             string userName = UserService.GetUserIdentifier(message.Chat) ?? "Không có";
             string firstName = user.FirstName ?? "Không có";
             string lastName = user.LastName ?? "Không có";
+            string userRole = await CredentialService.GetUserRoleAsync(user.Id);
 
             string infoMessage = $"<b>Thông tin của bạn:</b>\n\n" +
                                 $"<b>Username:</b> {userName}\n" +
                                 $"<b>UserId:</b> <code>{user.Id}</code>\n" +
                                 $"<b>First Name:</b> {firstName}\n" +
-                                $"<b>Last Name:</b> {lastName}";
+                                $"<b>Last Name:</b> {lastName}\n" +
+                                $"<b>Quyền:</b> {userRole}";
 
             await botClient.SendTextMessageAsync(
                 chatId: message.Chat.Id,
