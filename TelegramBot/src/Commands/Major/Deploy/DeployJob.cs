@@ -6,6 +6,7 @@ using Newtonsoft.Json.Linq;
 using TelegramBot.Data.Models;
 using TelegramBot.Services;
 using TelegramBot.Utilities.Deploy;
+using TelegramBot.Utilities.Deploy.JobUtilities;
 using TelegramBot.Utilities.Environment;
 
 namespace TelegramBot.Commands.Major.Deploy

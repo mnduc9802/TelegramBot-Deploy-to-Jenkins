@@ -5,6 +5,7 @@ using Telegram.Bot.Types;
 using TelegramBot.Commands.Major.Deploy;
 using TelegramBot.Data.DbContext;
 using TelegramBot.Data.Models;
+using TelegramBot.Core;
 using TelegramBot.Utilities.Environment;
 
 namespace TelegramBot.Services

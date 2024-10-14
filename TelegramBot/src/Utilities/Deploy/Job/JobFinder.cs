@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace TelegramBot.Utilities.Deploy
+namespace TelegramBot.Utilities.Deploy.JobUtilities
 {
     public static class JobFinder
     {

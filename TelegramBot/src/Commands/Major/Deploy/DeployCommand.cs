@@ -4,6 +4,8 @@ using Telegram.Bot.Types;
 using TelegramBot.Commands.Major.Project;
 using TelegramBot.Services;
 using TelegramBot.Utilities.Deploy;
+using TelegramBot.Utilities.Deploy.FolderUtilities;
+using TelegramBot.Utilities.Deploy.JobUtilities;
 
 namespace TelegramBot.Commands.Major.Deploy
 {

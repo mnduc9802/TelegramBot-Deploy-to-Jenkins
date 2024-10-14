@@ -4,6 +4,7 @@ using Telegram.Bot.Types;
 using TelegramBot.Data.DbContext;
 using TelegramBot.Data.Models;
 using TelegramBot.Commands.Major.Deploy;
+using TelegramBot.Core;
 
 namespace TelegramBot.Commands.Major.Project
 {

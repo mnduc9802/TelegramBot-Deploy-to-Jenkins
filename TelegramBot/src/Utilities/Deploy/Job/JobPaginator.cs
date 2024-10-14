@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using TelegramBot.Data.Models;
 
-namespace TelegramBot.Utilities.Deploy
+namespace TelegramBot.Utilities.Deploy.JobUtilities
 {
     public class JobPaginator
     {

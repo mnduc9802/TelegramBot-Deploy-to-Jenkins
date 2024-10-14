@@ -1,7 +1,7 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace TelegramBot.Utilities.Deploy
+namespace TelegramBot.Utilities.Deploy.FolderUtilities
 {
     public class FolderPaginator
     {

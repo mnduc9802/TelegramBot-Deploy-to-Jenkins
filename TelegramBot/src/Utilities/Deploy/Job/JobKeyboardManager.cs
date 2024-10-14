@@ -1,7 +1,7 @@
 ﻿using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Data.Models;
 
-namespace TelegramBot.Utilities.Deploy
+namespace TelegramBot.Utilities.Deploy.JobUtilities
 {
     public class JobKeyboardManager
     {
