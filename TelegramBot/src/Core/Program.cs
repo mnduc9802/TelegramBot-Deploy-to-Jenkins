@@ -11,19 +11,19 @@ namespace TelegramBot.Core
     public class Program
     {
         #region Fields and Properties
-        public static ITelegramBotClient botClient;
+        
         public static string? connectionString { get; private set; }
         public static string? botToken { get; private set; }
         #endregion
 
         #region Main Method
-        public static async Task Main()
+        public static async Task Main(ITelegramBotClient botClient)
         {
             try
             {
                 InitializeServices();
-                await StartBot();
-                await RunBot();
+                await StartBot(botClient);
+                await RunBot(botClient);
             }
             catch (Exception ex)
             {
@@ -49,7 +49,7 @@ namespace TelegramBot.Core
             }
         }
 
-        private static async Task StartBot()
+        private static async Task StartBot(ITelegramBotClient botClient)
         {
             botClient = new TelegramBotClient(botToken);
 
@@ -65,7 +65,7 @@ namespace TelegramBot.Core
             }
         }
 
-        private static async Task RunBot()
+        private static async Task RunBot(ITelegramBotClient botClient)
         {
             await MenuCommand.SetBotCommandsAsync(botClient);
             var receiverOptions = new ReceiverOptions
