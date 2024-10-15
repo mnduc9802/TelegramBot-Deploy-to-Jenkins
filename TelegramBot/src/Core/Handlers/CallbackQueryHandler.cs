@@ -12,8 +12,7 @@ namespace TelegramBot.Core.Handlers
 {
     public class CallbackQueryHandler
     {
-        public static ITelegramBotClient botClient;
-        public static async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             try
             {
@@ -30,7 +29,7 @@ namespace TelegramBot.Core.Handlers
             }
             catch (Exception ex)
             {
-                await HandleCallbackQueryError(ex, callbackQuery, cancellationToken);
+                await HandleCallbackQueryError(botClient, ex, callbackQuery, cancellationToken);
             }
         }
 
@@ -167,7 +166,7 @@ namespace TelegramBot.Core.Handlers
             await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, cancellationToken);
         }
 
-        public static async Task HandleCallbackQueryError(Exception ex, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        public static async Task HandleCallbackQueryError(ITelegramBotClient botClient, Exception ex, CallbackQuery callbackQuery, CancellationToken cancellationToken)
         {
             LoggerService.LogError(ex, $"Error handling callback query from chat {callbackQuery.Message.Chat.Id}");
             try

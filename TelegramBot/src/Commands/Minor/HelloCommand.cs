@@ -15,7 +15,7 @@ namespace TelegramBot.Commands.Minor
             {
                 await botClient.SendTextMessageAsync(
                     chatId: message.Chat.Id,
-                    text: "Xin chào! Vui lòng bấm vào Menu hoặc dấu [/] ở góc phải, để thực hiện các yêu cầu. \nNếu bạn không thấy Menu, hãy /help để hiển thị trợ giúp.\n - Telegram Bot by mnduc9802",
+                    text: "Xin chào! Vui lòng bấm vào Menu hoặc dấu [/] ở góc phải, để thực hiện các yêu cầu. \n\nNếu bạn không thấy Menu, hãy /help để hiển thị trợ giúp.\n\n - Telegram Bot by mnduc9802",
                     cancellationToken: cancellationToken);
                 return;
             }

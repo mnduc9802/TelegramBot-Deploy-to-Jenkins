@@ -12,8 +12,7 @@ namespace TelegramBot.Core.Handlers
 {
     public static class MessageHandler
     {
-        public static ITelegramBotClient botClient;
-        public static async Task HandleMessageAsync(Message message, CancellationToken cancellationToken)
+        public static async Task HandleMessageAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
             try
             {
@@ -25,11 +24,11 @@ namespace TelegramBot.Core.Handlers
                 if (string.IsNullOrEmpty(text))
                     return;
 
-                await ProcessMessageText(message, text, chatId, cancellationToken);
+                await ProcessMessageText(botClient, message, text, chatId, cancellationToken);
             }
             catch (Exception ex)
             {
-                await HandleMessageError(ex, message, cancellationToken);
+                await HandleMessageError(botClient, ex, message, cancellationToken);
             }
         }
 
@@ -40,7 +39,7 @@ namespace TelegramBot.Core.Handlers
             message.MessageId, message.Chat.Id, message.From?.Username ?? "Unknown", message.Text ?? "No text");
         }
 
-        public static async Task ProcessMessageText(Message message, string text, long chatId, CancellationToken cancellationToken)
+        public static async Task ProcessMessageText(ITelegramBotClient botClient, Message message, string text, long chatId, CancellationToken cancellationToken)
         {
             var botUsername = (await botClient.GetMeAsync(cancellationToken)).Username;
             text = NormalizeBotCommand(text, botUsername);
@@ -144,7 +143,7 @@ namespace TelegramBot.Core.Handlers
             }
         }
 
-        public static async Task HandleMessageError(Exception ex, Message message, CancellationToken cancellationToken)
+        public static async Task HandleMessageError(ITelegramBotClient botClient, Exception ex, Message message, CancellationToken cancellationToken)
         {
             LoggerService.LogError(ex,
                 "Error handling message. MessageId: {MessageId}, ChatId: {ChatId}",

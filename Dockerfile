@@ -8,7 +8,7 @@ RUN dotnet restore
 
 # Sao chép tất cả mã nguồn và xây dựng ứng dụng
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish /app/TelegramBot/TelegramBot.csproj -c Release -o /app/publish
 
 # Bước 2: Tạo hình ảnh chạy ứng dụng
 FROM mcr.microsoft.com/dotnet/aspnet:8.0

@@ -16,12 +16,12 @@ namespace TelegramBot.Core.Handlers
                 if (update.Type == UpdateType.Message && update.Message?.Text != null)
                 {
                     LoggerService.LogDebug("Received message: {Message}", update.Message.Text);
-                    await MessageHandler.HandleMessageAsync(update.Message, cancellationToken);
+                    await MessageHandler.HandleMessageAsync(botClient, update.Message, cancellationToken);
                 }
                 else if (update.Type == UpdateType.CallbackQuery)
                 {
                     LoggerService.LogDebug("Received callback query: {CallbackData}", update.CallbackQuery.Data);
-                    await CallbackQueryHandler.HandleCallbackQueryAsync(update.CallbackQuery, cancellationToken);
+                    await CallbackQueryHandler.HandleCallbackQueryAsync(botClient, update.CallbackQuery, cancellationToken);
                 }
             }
             catch (Exception ex)

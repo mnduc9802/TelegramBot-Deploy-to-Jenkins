@@ -36,7 +36,7 @@ namespace TelegramBot.Core.Handlers
         {
             Console.WriteLine($"Critical error during bot startup: {ex.Message}");
             Console.WriteLine("Press any key to exit.");
-            Console.ReadKey();
+            Console.Read();
         }
     }
 }
