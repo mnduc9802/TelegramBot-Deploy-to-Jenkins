@@ -11,7 +11,6 @@ namespace TelegramBot.Core
     public class Program
     {
         #region Fields and Properties
-        
         public static string? connectionString { get; private set; }
         public static string? botToken { get; private set; }
         #endregion
