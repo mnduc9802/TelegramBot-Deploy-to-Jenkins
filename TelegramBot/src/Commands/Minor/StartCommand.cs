@@ -4,7 +4,7 @@ using TelegramBot.Services;
 
 namespace TelegramBot.Commands.Minor
 {
-    public class HelloCommand
+    public class StartCommand
     {
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {

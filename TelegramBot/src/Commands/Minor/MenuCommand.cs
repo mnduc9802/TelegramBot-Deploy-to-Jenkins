@@ -9,7 +9,7 @@ namespace TelegramBot.Commands.Minor
         {
             var commands = new List<BotCommand>
             {
-                new BotCommand { Command = "hello", Description = "Chào mừng người dùng" },
+                new BotCommand { Command = "start", Description = "Chào mừng người dùng" },
                 new BotCommand { Command = "projects", Description = "Danh sách các dự án" },
                 new BotCommand { Command = "deploy", Description = "Triển khai dự án" },
                 new BotCommand { Command = "myinfo", Description = "Hiển thị thông tin của bạn" },

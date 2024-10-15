@@ -8,7 +8,7 @@ namespace TelegramBot.Commands.Minor
         public static async Task ExecuteAsync(ITelegramBotClient botClient, Message message, CancellationToken cancellationToken)
         {
             var helpText = "*Các lệnh có sẵn:*\n\n" +
-                           "👋 /hello - *Chào mừng* - Chào mừng và bắt đầu cuộc trò chuyện với bot.\n\n"+
+                           "👋 /start - *Chào mừng* - Chào mừng và bắt đầu cuộc trò chuyện với bot.\n\n"+
                            "📂 /project - *Danh sách các dự án* - Hiển thị tất cả các dự án hiện có.\n" +
                            "      *Danh sách các Job đang được lên lịch:* - Hiển thị danh sách Job đang được lên lịch, có thể Sửa thời gian lên lịch || Xóa - Hủy yêu cầu lên lịch. \n\n" +
                            "🚀 /deploy - *Triển khai dự án* - Triển khai dự án đã chọn.\n" +
