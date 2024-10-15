@@ -18,8 +18,8 @@ namespace TelegramBot.Commands.Minor
                 return;
             }
 
-            string userName = UserService.GetUserIdentifier(message.Chat) ?? "Không có";
-            string firstName = user.FirstName ?? "Không có";
+            string userName = string.IsNullOrEmpty(user.Username) ? "Không có" : $"@{user.Username}";
+            string firstName = user.FirstName;
             string lastName = user.LastName ?? "Không có";
             string userRole = await CredentialService.GetUserRoleAsync(user.Id);
 

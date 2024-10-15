@@ -44,9 +44,22 @@ namespace TelegramBot.Core.Handlers
             var botUsername = (await botClient.GetMeAsync(cancellationToken)).Username;
             text = NormalizeBotCommand(text, botUsername);
 
-            if (message.Chat.Type != ChatType.Private && !text.Contains("@" + botUsername))
+            if (message.Chat.Type != ChatType.Private)
             {
-                return;
+                // Trong nhóm, chỉ xử lý nếu có @botUsername hoặc không có @ nào
+                if (!text.Contains("@") || text.EndsWith("@" + botUsername))
+                {
+                    text = NormalizeBotCommand(text, botUsername);
+                }
+                else
+                {
+                    return; // Bỏ qua nếu có @ nhưng không phải cho bot này
+                }
+            }
+            else
+            {
+                // Trong chat riêng, xử lý tất cả các lệnh
+                text = NormalizeBotCommand(text, botUsername);
             }
 
             await HandleSpecialStates(botClient, message, chatId, cancellationToken);
@@ -56,8 +69,9 @@ namespace TelegramBot.Core.Handlers
         public static string NormalizeBotCommand(string text, string botUsername)
         {
             var commandParts = text.Split('@');
-            if (commandParts.Length == 2 && commandParts[1].Equals(botUsername, StringComparison.OrdinalIgnoreCase))
+            if (commandParts.Length >= 2)
             {
+                // Nếu có @, chỉ lấy phần lệnh
                 return commandParts[0];
             }
             return text;
