@@ -18,7 +18,7 @@ namespace TelegramBot.Utilities.Deploy
     {
         private static readonly ConcurrentDictionary<long, int> lastMessageIds = new ConcurrentDictionary<long, int>();
         private static readonly HttpClient httpClient;
-        private static readonly SemaphoreSlim semaphore = new SemaphoreSlim(10, 10);
+        private static readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
         private const int SearchTimeoutSeconds = 60;
         private const int ProgressUpdateIntervalMs = 3000;
 
@@ -262,59 +262,59 @@ namespace TelegramBot.Utilities.Deploy
         }
 
         private static InlineKeyboardMarkup CreateCombinedSearchKeyboard(List<Job> jobs, List<string> folders)
+    {
+        var keyboardButtons = new List<List<InlineKeyboardButton>>();
+
+        foreach (var job in jobs.Take(5))
         {
-            var keyboardButtons = new List<List<InlineKeyboardButton>>();
+            var shortId = JobKeyboardManager.GenerateUniqueShortId();
+            JobKeyboardManager.jobUrlMap[shortId] = job.Url;
+            
+            // Tạo tên hiển thị cho job
+            var displayName = GetDisplayNameFromUrl(job.Url);
+            
+            keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"🔧 {displayName}", $"deploy_{shortId}") });
+        }
 
-            foreach (var job in jobs.Take(5))
-            {
-                var shortId = JobKeyboardManager.GenerateUniqueShortId();
-                JobKeyboardManager.jobUrlMap[shortId] = job.Url;
+        foreach (var folder in folders.Take(5))
+        {
+            var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+            FolderKeyboardManager.folderPathMap[shortId] = folder;
+            
+            // Chỉ lấy tên folder cha
+            var folderName = folder.Split('/').Last();
+            
+            keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"📁 {folderName}", $"folder_{shortId}") });
+        }
 
-                // Tạo tên hiển thị cho job
-                var displayName = GetDisplayNameFromUrl(job.Url);
-
-                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"🔧 {displayName}", $"deploy_{shortId}") });
-            }
-
-            foreach (var folder in folders.Take(5))
-            {
-                var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
-                FolderKeyboardManager.folderPathMap[shortId] = folder;
-
-                // Chỉ lấy tên folder cha
-                var folderName = folder.Split('/').Last();
-
-                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"📁 {folderName}", $"folder_{shortId}") });
-            }
-
-            keyboardButtons.Add(new List<InlineKeyboardButton>
+        keyboardButtons.Add(new List<InlineKeyboardButton>
         {
             InlineKeyboardButton.WithCallbackData("🔍", "search"),
             InlineKeyboardButton.WithCallbackData("📁", "back_to_folder")
         });
 
-            return new InlineKeyboardMarkup(keyboardButtons);
-        }
+        return new InlineKeyboardMarkup(keyboardButtons);
+    }
 
-        private static string GetDisplayNameFromUrl(string url)
+    private static string GetDisplayNameFromUrl(string url)
+    {
+        // Tìm vị trí của "/job/" đầu tiên trong URL
+        int startIndex = url.IndexOf("/job/");
+        if (startIndex == -1)
         {
-            // Tìm vị trí của "/job/" đầu tiên trong URL
-            int startIndex = url.IndexOf("/job/");
-            if (startIndex == -1)
-            {
-                // Nếu không tìm thấy "/job/", trả về URL gốc
-                return url;
-            }
-
-            // Cắt chuỗi từ vị trí sau "/job/" đầu tiên
-            string relevantPart = url.Substring(startIndex + 5);
-
-            // Tách chuỗi thành các phần, loại bỏ "job" và khoảng trắng
-            string[] parts = relevantPart.Split(new[] { "/job/", "/" }, StringSplitOptions.RemoveEmptyEntries);
-
-            // Kết hợp các phần lại với nhau, sử dụng khoảng trắng làm dấu phân cách
-            return string.Join(" ", parts);
+            // Nếu không tìm thấy "/job/", trả về URL gốc
+            return url;
         }
+
+        // Cắt chuỗi từ vị trí sau "/job/" đầu tiên
+        string relevantPart = url.Substring(startIndex + 5);
+
+        // Tách chuỗi thành các phần, loại bỏ "job" và khoảng trắng
+        string[] parts = relevantPart.Split(new[] { "/job/", "/" }, StringSplitOptions.RemoveEmptyEntries);
+
+        // Kết hợp các phần lại với nhau, sử dụng khoảng trắng làm dấu phân cách
+        return string.Join(" ", parts);
+    }
     }
 
     public static class ProgressExtensions
