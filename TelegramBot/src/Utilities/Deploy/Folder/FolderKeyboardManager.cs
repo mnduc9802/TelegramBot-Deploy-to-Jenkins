@@ -1,4 +1,5 @@
 ﻿using Telegram.Bot.Types.ReplyMarkups;
+using TelegramBot.Data.Models;
 
 namespace TelegramBot.Utilities.Deploy.FolderUtilities
 {
@@ -24,7 +25,7 @@ namespace TelegramBot.Utilities.Deploy.FolderUtilities
             {
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"folderpage_{currentPage - 1}"));
             }
-            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "foldersearch"));
+            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search")); // Changed to combined_search
             navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("📁", "back_to_folder"));
             if (currentPage < totalPages - 1)
             {

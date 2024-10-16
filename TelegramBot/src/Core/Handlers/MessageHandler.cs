@@ -5,6 +5,7 @@ using TelegramBot.Commands.Major.Deploy;
 using TelegramBot.Commands.Major.Project;
 using TelegramBot.Commands.Minor;
 using TelegramBot.Services;
+using TelegramBot.Utilities.Deploy;
 using TelegramBot.Utilities.Deploy.FolderUtilities;
 using TelegramBot.Utilities.Deploy.JobUtilities;
 
@@ -79,8 +80,8 @@ namespace TelegramBot.Core.Handlers
 
         public static async Task HandleSpecialStates(ITelegramBotClient botClient, Message message, long chatId, CancellationToken cancellationToken)
         {
-            await FolderFinder.HandleSearchQuery(botClient, message, cancellationToken);
-            await JobFinder.HandleSearchQuery(botClient, message, cancellationToken);
+            await CombinedSearchUtility.HandleSearchQuery(botClient, message, cancellationToken);
+            
 
             if (FeedbackCommand.feedbackState.TryGetValue(chatId, out bool isFeedback) && isFeedback)
             {

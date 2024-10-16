@@ -25,7 +25,7 @@ namespace TelegramBot.Utilities.Deploy.JobUtilities
             {
                 navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"page_{currentPage - 1}"));
             }
-            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search"));
+            navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("🔍", "search")); // Changed to combined_search
             navigationSearchAndBackButtons.Add(InlineKeyboardButton.WithCallbackData("📁", "back_to_folder"));
             if (currentPage < totalPages - 1)
             {
@@ -43,7 +43,7 @@ namespace TelegramBot.Utilities.Deploy.JobUtilities
             return new InlineKeyboardMarkup(keyboardButtons);
         }
 
-        private static string GenerateUniqueShortId()
+        public static string GenerateUniqueShortId()
         {
             string shortId;
             do
