@@ -269,23 +269,51 @@ namespace TelegramBot.Utilities.Deploy
             {
                 var shortId = JobKeyboardManager.GenerateUniqueShortId();
                 JobKeyboardManager.jobUrlMap[shortId] = job.Url;
-                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"🔧 {job.JobName}", $"deploy_{shortId}") });
+
+                // Tạo tên hiển thị cho job
+                var displayName = GetDisplayNameFromUrl(job.Url);
+
+                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"🔧 {displayName}", $"deploy_{shortId}") });
             }
 
             foreach (var folder in folders.Take(5))
             {
                 var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
                 FolderKeyboardManager.folderPathMap[shortId] = folder;
-                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"📁 {folder}", $"folder_{shortId}") });
+
+                // Chỉ lấy tên folder cha
+                var folderName = folder.Split('/').Last();
+
+                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"📁 {folderName}", $"folder_{shortId}") });
             }
 
             keyboardButtons.Add(new List<InlineKeyboardButton>
-            {
-                InlineKeyboardButton.WithCallbackData("🔍", "search"),
-                InlineKeyboardButton.WithCallbackData("📁", "back_to_folder")
-            });
+        {
+            InlineKeyboardButton.WithCallbackData("🔍", "search"),
+            InlineKeyboardButton.WithCallbackData("📁", "back_to_folder")
+        });
 
             return new InlineKeyboardMarkup(keyboardButtons);
+        }
+
+        private static string GetDisplayNameFromUrl(string url)
+        {
+            // Tìm vị trí của "/job/" đầu tiên trong URL
+            int startIndex = url.IndexOf("/job/");
+            if (startIndex == -1)
+            {
+                // Nếu không tìm thấy "/job/", trả về URL gốc
+                return url;
+            }
+
+            // Cắt chuỗi từ vị trí sau "/job/" đầu tiên
+            string relevantPart = url.Substring(startIndex + 5);
+
+            // Tách chuỗi thành các phần, loại bỏ "job" và khoảng trắng
+            string[] parts = relevantPart.Split(new[] { "/job/", "/" }, StringSplitOptions.RemoveEmptyEntries);
+
+            // Kết hợp các phần lại với nhau, sử dụng khoảng trắng làm dấu phân cách
+            return string.Join(" ", parts);
         }
     }
 
