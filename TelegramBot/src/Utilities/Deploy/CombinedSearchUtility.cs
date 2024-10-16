@@ -10,20 +10,25 @@ using System.Net.Http.Headers;
 using System.Text;
 using TelegramBot.Services;
 using Telegram.Bot.Exceptions;
+using System.Collections.Concurrent;
 
 namespace TelegramBot.Utilities.Deploy
 {
     public static class CombinedSearchUtility
     {
-        private static Dictionary<long, int> lastMessageIds = new Dictionary<long, int>();
-        private static HttpClient httpClient;
+        private static readonly ConcurrentDictionary<long, int> lastMessageIds = new ConcurrentDictionary<long, int>();
+        private static readonly HttpClient httpClient;
+        private static readonly SemaphoreSlim semaphore = new SemaphoreSlim(10, 10);
+        private const int SearchTimeoutSeconds = 60;
+        private const int ProgressUpdateIntervalMs = 3000;
 
         static CombinedSearchUtility()
         {
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
             httpClient = new HttpClient
             {
-                BaseAddress = new Uri(jenkinsUrl)
+                BaseAddress = new Uri(jenkinsUrl),
+                Timeout = TimeSpan.FromSeconds(SearchTimeoutSeconds)
             };
         }
 
@@ -57,7 +62,7 @@ namespace TelegramBot.Utilities.Deploy
             {
                 var searchQuery = message.Text.ToLower();
 
-                if (lastMessageIds.TryGetValue(chatId, out int lastMessageId))
+                if (lastMessageIds.TryRemove(chatId, out int lastMessageId))
                 {
                     try
                     {
@@ -65,10 +70,8 @@ namespace TelegramBot.Utilities.Deploy
                     }
                     catch (ApiRequestException ex) when (ex.Message.Contains("message to delete not found"))
                     {
-                        // Log the error but continue execution
                         Console.WriteLine($"Failed to delete message {lastMessageId} for chat {chatId}: {ex.Message}");
                     }
-                    lastMessageIds.Remove(chatId);
                 }
 
                 try
@@ -77,94 +80,172 @@ namespace TelegramBot.Utilities.Deploy
                 }
                 catch (ApiRequestException ex) when (ex.Message.Contains("message to delete not found"))
                 {
-                    // Log the error but continue execution
                     Console.WriteLine($"Failed to delete message {message.MessageId} for chat {chatId}: {ex.Message}");
                 }
 
-                var matchingJobs = new List<Job>();
-                var matchingFolders = new List<string>();
+                var progressMessage = await botClient.SendTextMessageAsync(chatId, "Bắt đầu tìm kiếm...", cancellationToken: cancellationToken);
+
+                var matchingJobs = new ConcurrentBag<Job>();
+                var matchingFolders = new ConcurrentBag<string>();
+                var searchProgress = new Progress<string>(async (update) =>
+                {
+                    try
+                    {
+                        await botClient.EditMessageTextAsync(chatId, progressMessage.MessageId, update, cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to update progress message: {ex.Message}");
+                    }
+                });
 
                 if (FolderPaginator.chatState.TryGetValue(chatId, out var rootFolders))
                 {
-                    foreach (var rootFolder in rootFolders)
+                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(SearchTimeoutSeconds)))
+                    using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken))
                     {
-                        await SearchJobsRecursivelyAsync(httpClient, rootFolder, searchQuery, matchingJobs, userId);
-                        SearchFoldersNonRecursively(rootFolder, searchQuery, matchingFolders);
+                        try
+                        {
+                            var searchTask = SearchAllFoldersAsync(rootFolders, searchQuery, matchingJobs, matchingFolders, userId, searchProgress, linkedCts.Token);
+                            await searchTask;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            await searchProgress.OnProgressAsync("Tìm kiếm đã bị hủy hoặc hết thời gian.");
+                        }
+                        catch (Exception ex)
+                        {
+                            await searchProgress.OnProgressAsync($"Đã xảy ra lỗi trong quá trình tìm kiếm: {ex.Message}");
+                        }
                     }
                 }
 
                 if (matchingJobs.Any() || matchingFolders.Any())
                 {
-                    var keyboard = CreateCombinedSearchKeyboard(matchingJobs, matchingFolders);
-                    await botClient.SendTextMessageAsync(chatId, $"Kết quả tìm kiếm cho '{searchQuery}':", replyMarkup: keyboard, cancellationToken: cancellationToken);
+                    var keyboard = CreateCombinedSearchKeyboard(matchingJobs.ToList(), matchingFolders.ToList());
+                    await botClient.EditMessageTextAsync(chatId, progressMessage.MessageId,
+                        $"Kết quả tìm kiếm cho '{searchQuery}':\nTìm thấy {matchingJobs.Count} jobs và {matchingFolders.Count} folders.",
+                        replyMarkup: keyboard, cancellationToken: cancellationToken);
                 }
                 else
                 {
-                    await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy job hoặc folder nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
+                    await botClient.EditMessageTextAsync(chatId, progressMessage.MessageId,
+                        $"Không tìm thấy job hoặc folder nào phù hợp với '{searchQuery}'.",
+                        cancellationToken: cancellationToken);
                 }
             }
         }
 
-        private static async Task SearchJobsRecursivelyAsync(HttpClient client, string currentPath, string searchQuery, List<Job> matchingJobs, long userId)
+        private static async Task SearchAllFoldersAsync(List<string> rootFolders, string searchQuery, ConcurrentBag<Job> matchingJobs, ConcurrentBag<string> matchingFolders, long userId, IProgress<string> progress, CancellationToken cancellationToken)
+        {
+            var folderQueue = new ConcurrentQueue<string>(rootFolders);
+            var processedRootFolders = 0;
+            var totalRootFolders = rootFolders.Count;
+
+            async Task ProcessFoldersAsync()
+            {
+                while (folderQueue.TryDequeue(out var folder))
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
+                    await SearchFolderAsync(folder, searchQuery, matchingJobs, matchingFolders, userId, folderQueue, cancellationToken);
+
+                    if (rootFolders.Contains(folder))
+                    {
+                        Interlocked.Increment(ref processedRootFolders);
+                        await UpdateProgressAsync(processedRootFolders, totalRootFolders, matchingJobs.Count, matchingFolders.Count, progress);
+                    }
+                }
+            }
+
+            var tasks = Enumerable.Range(0, 5).Select(_ => ProcessFoldersAsync());
+            await Task.WhenAll(tasks);
+
+            // Final update to ensure we show 100% completion
+            await UpdateProgressAsync(totalRootFolders, totalRootFolders, matchingJobs.Count, matchingFolders.Count, progress);
+        }
+
+        private static async Task UpdateProgressAsync(int processedFolders, int totalFolders, int jobCount, int folderCount, IProgress<string> progress)
+        {
+            await progress.OnProgressAsync($"Đã tìm kiếm {processedFolders}/{totalFolders} thư mục cha. Tìm thấy {jobCount} jobs và {folderCount} folders.");
+        }
+
+        private static async Task SearchFolderAsync(string folder, string searchQuery, ConcurrentBag<Job> matchingJobs, ConcurrentBag<string> matchingFolders, long userId, ConcurrentQueue<string> folderQueue, CancellationToken cancellationToken)
         {
             try
             {
-                Console.WriteLine($"SearchJobsRecursivelyAsync - User ID: {userId}, Searching in folder: {currentPath}");
+                await semaphore.WaitAsync(cancellationToken);
 
-                // Set up authentication
                 var userRole = await CredentialService.GetUserRoleAsync(userId);
                 var (username, password) = CredentialService.GetCredentialsForRole(userRole);
                 var authString = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authString);
 
-                var response = await client.GetAsync($"/job/{currentPath.Replace("/", "/job/")}/api/json?tree=jobs[name,url,color]");
-                if (!response.IsSuccessStatusCode)
+                using (var request = new HttpRequestMessage(HttpMethod.Get, $"/job/{folder.Replace("/", "/job/")}/api/json?tree=jobs[name,url,color]"))
                 {
-                    Console.WriteLine($"SearchJobsRecursivelyAsync - User ID: {userId}, Failed to fetch jobs for path {currentPath}. Status code: {response.StatusCode}");
-                    return;
-                }
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authString);
 
-                var content = await response.Content.ReadAsStringAsync();
-                var json = JObject.Parse(content);
-                var jobs = json["jobs"] as JArray;
-
-                if (jobs == null)
-                {
-                    Console.WriteLine($"SearchJobsRecursivelyAsync - User ID: {userId}, No jobs found for path {currentPath}");
-                    return;
-                }
-
-                foreach (var job in jobs)
-                {
-                    var jobName = job["name"]?.ToString();
-                    var jobUrl = job["url"]?.ToString();
-                    if (jobName == null || jobUrl == null) continue;
-
-                    var relativeUrl = jobUrl.Replace(client.BaseAddress + "job/", "").TrimEnd('/');
-
-                    if (job["color"] != null)
+                    using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
                     {
-                        Console.WriteLine($"SearchJobsRecursivelyAsync - User ID: {userId}, Found job: {jobName}");
-                        if (jobName.ToLower().Contains(searchQuery))
+                        if (!response.IsSuccessStatusCode)
                         {
-                            matchingJobs.Add(new Job { JobName = jobName, Url = relativeUrl });
+                            Console.WriteLine($"SearchFolderAsync - User ID: {userId}, Failed to fetch jobs for path {folder}. Status code: {response.StatusCode}");
+                            return;
                         }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"SearchJobsRecursivelyAsync - User ID: {userId}, Found folder: {jobName}. Searching recursively...");
-                        var subFolderPath = currentPath + "/" + jobName;
-                        await SearchJobsRecursivelyAsync(client, subFolderPath, searchQuery, matchingJobs, userId);
+
+                        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                        var json = JObject.Parse(content);
+                        var jobs = json["jobs"] as JArray;
+
+                        if (jobs == null)
+                        {
+                            Console.WriteLine($"SearchFolderAsync - User ID: {userId}, No jobs found for path {folder}");
+                            return;
+                        }
+
+                        foreach (var job in jobs)
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                                break;
+
+                            var jobName = job["name"]?.ToString();
+                            var jobUrl = job["url"]?.ToString();
+                            if (jobName == null || jobUrl == null) continue;
+
+                            var relativeUrl = jobUrl.Replace(httpClient.BaseAddress + "job/", "").TrimEnd('/');
+
+                            if (job["color"] != null)
+                            {
+                                if (jobName.IndexOf(searchQuery, StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    matchingJobs.Add(new Job { JobName = jobName, Url = relativeUrl });
+                                }
+                            }
+                            else
+                            {
+                                var subFolderPath = folder + "/" + jobName;
+                                folderQueue.Enqueue(subFolderPath);
+                            }
+                        }
+
+                        if (folder.IndexOf(searchQuery, StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            matchingFolders.Add(folder);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"SearchJobsRecursivelyAsync - User ID: {userId}, Error searching folder {currentPath}: {ex.Message}");
+                Console.WriteLine($"SearchFolderAsync - User ID: {userId}, Error searching folder {folder}: {ex.Message}");
+            }
+            finally
+            {
+                semaphore.Release();
             }
         }
 
-        private static void SearchFoldersNonRecursively(string currentPath, string searchQuery, List<string> matchingFolders)
+        private static void SearchFoldersNonRecursively(string currentPath, string searchQuery, ConcurrentBag<string> matchingFolders)
         {
             var pathParts = currentPath.Split('/');
             var currentMatch = "";
@@ -172,81 +253,26 @@ namespace TelegramBot.Utilities.Deploy
             for (int i = 0; i < pathParts.Length; i++)
             {
                 currentMatch += (i > 0 ? "/" : "") + pathParts[i];
-                if (currentMatch.ToLower().Contains(searchQuery))
+                if (currentMatch.IndexOf(searchQuery, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     matchingFolders.Add(currentMatch);
-                    return; // Stop after finding the largest matching folder
+                    return;
                 }
             }
         }
-
-        //private static async Task<List<Job>> GetJobsRecursivelyAsync(HttpClient client, string currentPath, string rootPath, long userId)
-        //{
-        //    var result = new List<Job>();
-        //    try
-        //    {
-        //        Console.WriteLine($"GetJobsRecursivelyAsync - User ID: {userId}, Fetching jobs for path: {currentPath}");
-
-        //        // Get user role and credentials
-        //        var userRole = await CredentialService.GetUserRoleAsync(userId);
-        //        var (username, password) = CredentialService.GetCredentialsForRole(userRole);
-
-        //        // Set up authentication
-        //        var authString = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
-        //        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authString);
-
-        //        var response = await client.GetAsync($"/job/{currentPath.Replace("/", "/job/")}/api/json?tree=jobs[name,url,color]");
-        //        if (!response.IsSuccessStatusCode)
-        //        {
-        //            Console.WriteLine($"GetJobsRecursivelyAsync - User ID: {userId}, Failed to fetch jobs for path {currentPath}. Status code: {response.StatusCode}");
-        //            return result;
-        //        }
-        //        var content = await response.Content.ReadAsStringAsync();
-        //        var json = JObject.Parse(content);
-        //        var jobs = json["jobs"] as JArray;
-        //        if (jobs == null)
-        //        {
-        //            Console.WriteLine($"GetJobsRecursivelyAsync - User ID: {userId}, No jobs found for path {currentPath}");
-        //            return result;
-        //        }
-        //        foreach (var job in jobs)
-        //        {
-        //            var jobName = job["name"]?.ToString();
-        //            var jobUrl = job["url"]?.ToString();
-        //            if (jobName == null || jobUrl == null) continue;
-        //            var relativeUrl = jobUrl.Replace(client.BaseAddress + "job/", "").TrimEnd('/');
-        //            if (job["color"] != null)
-        //            {
-        //                Console.WriteLine($"GetJobsRecursivelyAsync - User ID: {userId}, Found job: {jobName}");
-        //                result.Add(new Job { JobName = jobName, Url = relativeUrl });
-        //            }
-        //            else
-        //            {
-        //                Console.WriteLine($"GetJobsRecursivelyAsync - User ID: {userId}, Found folder: {jobName}. Searching recursively...");
-        //                var subFolderPath = currentPath + "/" + jobName;
-        //                result.AddRange(await GetJobsRecursivelyAsync(client, subFolderPath, rootPath, userId));
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"GetJobsRecursivelyAsync - User ID: {userId}, Error in GetJobsRecursivelyAsync for path {currentPath}: {ex.Message}");
-        //    }
-        //    return result;
-        //}
 
         private static InlineKeyboardMarkup CreateCombinedSearchKeyboard(List<Job> jobs, List<string> folders)
         {
             var keyboardButtons = new List<List<InlineKeyboardButton>>();
 
-            foreach (var job in jobs)
+            foreach (var job in jobs.Take(5))
             {
                 var shortId = JobKeyboardManager.GenerateUniqueShortId();
                 JobKeyboardManager.jobUrlMap[shortId] = job.Url;
                 keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"🔧 {job.JobName}", $"deploy_{shortId}") });
             }
 
-            foreach (var folder in folders)
+            foreach (var folder in folders.Take(5))
             {
                 var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
                 FolderKeyboardManager.folderPathMap[shortId] = folder;
@@ -260,7 +286,14 @@ namespace TelegramBot.Utilities.Deploy
             });
 
             return new InlineKeyboardMarkup(keyboardButtons);
-        
+        }
+    }
+
+    public static class ProgressExtensions
+    {
+        public static Task OnProgressAsync<T>(this IProgress<T> progress, T value)
+        {
+            return Task.Run(() => progress.Report(value));
         }
     }
 }
