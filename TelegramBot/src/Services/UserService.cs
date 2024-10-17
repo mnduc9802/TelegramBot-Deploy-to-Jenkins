@@ -4,7 +4,7 @@ namespace TelegramBot.Services
 {
     public class UserService
     {
-        public static string GetUserIdentifier(Chat user)
+        public static string GetUserIdentifier(User user)
         {
             if (!string.IsNullOrEmpty(user.Username))
             {
@@ -16,7 +16,7 @@ namespace TelegramBot.Services
             }
             else
             {
-                return "User";
+                return $"User {user.Id}";
             }
         }
 

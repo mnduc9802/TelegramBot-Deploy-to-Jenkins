@@ -120,7 +120,7 @@ namespace TelegramBot.Utilities.Deploy.General
             if (jobUrl != null)
             {
                 var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, userId);
-                await DeployCommand.SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken);
+                await DeployCommand.SendDeployResultAsync(botClient, callbackQuery.Message.Chat.Id, jobUrl, deployResult, cancellationToken, callbackQuery.From);
             }
             else
             {

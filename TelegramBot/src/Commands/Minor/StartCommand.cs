@@ -21,7 +21,7 @@ namespace TelegramBot.Commands.Minor
             }
 
             // Xử lý nếu có thông tin người dùng
-            string userIdentifier = UserService.GetUserIdentifier(message.Chat);
+            string userIdentifier = UserService.GetUserIdentifier(user);
             string fullName = UserService.GetFullName(user);
 
             string replyMessage = $"Xin chào {userIdentifier}! Vui lòng bấm vào Menu hoặc dấu [/] ở góc phải, để thực hiện các yêu cầu.\n\n Nếu bạn không thấy Menu, hãy /help để hiển thị trợ giúp.\n\n - Telegram Bot by mnduc9802";

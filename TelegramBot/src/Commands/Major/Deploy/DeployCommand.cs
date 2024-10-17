@@ -43,7 +43,6 @@ namespace TelegramBot.Commands.Major.Deploy
             }
 
             var chatId = callbackQuery.Message.Chat.Id;
-            // Always use the original caller's userId
             var userId = callbackQuery.From?.Id ?? throw new ArgumentNullException(nameof(callbackQuery.From.Id));
             Console.WriteLine($"HandleCallbackQueryAsync - Using userId: {userId}");
             var userRole = await CredentialService.GetUserRoleAsync(userId);
@@ -75,7 +74,7 @@ namespace TelegramBot.Commands.Major.Deploy
                 var jobUrl = callbackQuery.Data.Replace("confirm_job_yes_", "");
                 await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
                 var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, userId);
-                await SendDeployResultAsync(botClient, chatId, jobUrl, deployResult, cancellationToken);
+                await SendDeployResultAsync(botClient, chatId, jobUrl, deployResult, cancellationToken, callbackQuery.From);
             }
             else if (callbackQuery.Data == "confirm_job_no")
             {
@@ -121,14 +120,13 @@ namespace TelegramBot.Commands.Major.Deploy
             var jobUrl = await JobService.GetJobUrlFromId(int.Parse(jobUrlId));
             if (!string.IsNullOrEmpty(jobUrl))
             {
-                // Thêm log cho folder path và job name
                 var folderPath = Path.GetDirectoryName(jobUrl)?.Replace("job/", "");
                 var jobName = Path.GetFileName(jobUrl);
                 LoggerService.LogInformation("Processing version input for deployment. JobName: {JobName}, FolderPath: {FolderPath}, Version: {Version}, UserId: {UserId}", jobName, folderPath, version, userId);
 
                 await JobService.GetOrCreateJobUrlId(jobUrl, userId, version);
                 var deployResult = await DeployJob.DeployProjectAsync(jobUrl, userRole, userId, version);
-                await SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken);
+                await SendDeployResultAsync(botClient, message.Chat.Id, jobUrl, deployResult, cancellationToken, message.From);
             }
             else
             {
@@ -158,18 +156,16 @@ namespace TelegramBot.Commands.Major.Deploy
             await FolderPaginator.ShowFoldersPage(botClient, chatId, projects, 0, cancellationToken);
         }
 
-        public static async Task SendDeployResultAsync(ITelegramBotClient botClient, long chatId, string project, bool success, CancellationToken cancellationToken)
+        public static async Task SendDeployResultAsync(ITelegramBotClient botClient, long chatId, string project, bool success, CancellationToken cancellationToken, User user)
         {
             var folderPath = Path.GetDirectoryName(project)?.Replace("job/", "");
             var jobName = Path.GetFileName(project);
 
-            // Get user information
-            var user = await botClient.GetChatAsync(chatId, cancellationToken);
             string userIdentifier = UserService.GetUserIdentifier(user);
 
             var resultMessage = success
-                ? $"{userIdentifier} Triển khai {project} thành công!"
-                : $"{userIdentifier} Triển khai {project} thất bại.";
+                ? $"{userIdentifier} triển khai {project} thành công!"
+                : $"{userIdentifier} triển khai {project} thất bại.";
 
             LoggerService.LogInformation(
                 "Deploy result. User: {User}, JobName: {JobName}, FolderPath: {FolderPath}, Success: {Success}, ChatId: {ChatId}",
