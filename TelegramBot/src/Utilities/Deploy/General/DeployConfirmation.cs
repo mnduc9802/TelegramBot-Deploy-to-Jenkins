@@ -5,7 +5,7 @@ using TelegramBot.Commands.Major.Deploy;
 using TelegramBot.Commands.Major.Project;
 using TelegramBot.Services;
 
-namespace TelegramBot.Utilities.Deploy
+namespace TelegramBot.Utilities.Deploy.General
 {
     public static class DeployConfirmation
     {
