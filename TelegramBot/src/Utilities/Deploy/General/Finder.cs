@@ -9,15 +9,17 @@ using TelegramBot.Utilities.Environment;
 using System.Net.Http.Headers;
 using System.Text;
 using TelegramBot.Services;
+using System.Collections.Concurrent;
 
 namespace TelegramBot.Utilities.Deploy.General
 {
-    public static class CombinedSearchUtility
+    public static class Finder
     {
-        private static Dictionary<long, int> lastMessageIds = new Dictionary<long, int>();
-        private static HttpClient httpClient;
+        private static readonly Dictionary<long, int> lastMessageIds = new Dictionary<long, int>();
+        private static readonly HttpClient httpClient;
+        private static readonly LRUCache<string, (List<Job> Jobs, List<string> Folders)> searchCache = new LRUCache<string, (List<Job>, List<string>)>(100, TimeSpan.FromDays(1));
 
-        static CombinedSearchUtility()
+        static Finder()
         {
             string jenkinsUrl = EnvironmentVariableLoader.GetJenkinsUrl();
             httpClient = new HttpClient
@@ -56,33 +58,35 @@ namespace TelegramBot.Utilities.Deploy.General
             {
                 var searchQuery = message.Text.ToLower();
 
-                // Delete previous messages...
+                if (searchCache.TryGetValue(searchQuery, out var cachedResult))
+                {
+                    await SendSearchResults(botClient, chatId, searchQuery, cachedResult.Jobs, cachedResult.Folders, cancellationToken);
+                    return;
+                }
 
-                var matchingJobs = new List<Job>();
-                var matchingFolders = new HashSet<string>();
+                var matchingJobs = new ConcurrentBag<Job>();
+                var matchingFolders = new ConcurrentDictionary<string, byte>();
 
                 if (FolderPaginator.chatState.TryGetValue(chatId, out var rootFolders))
                 {
-                    foreach (var rootFolder in rootFolders)
-                    {
-                        await SearchRecursivelyAsync(httpClient, rootFolder, searchQuery, matchingJobs, matchingFolders, userId, "");
-                    }
+                    await Task.WhenAll(rootFolders.Select(rootFolder =>
+                        SearchRecursivelyAsync(httpClient, rootFolder, searchQuery, matchingJobs, matchingFolders, userId, "", 5)
+                    ));
                 }
 
-                if (matchingJobs.Any() || matchingFolders.Any())
-                {
-                    var keyboard = CreateCombinedSearchKeyboard(matchingJobs, matchingFolders.ToList());
-                    await botClient.SendTextMessageAsync(chatId, $"Kết quả tìm kiếm cho '{searchQuery}':", replyMarkup: keyboard, cancellationToken: cancellationToken);
-                }
-                else
-                {
-                    await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy job hoặc folder nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
-                }
+                var resultJobs = matchingJobs.ToList();
+                var resultFolders = matchingFolders.Keys.ToList();
+
+                searchCache.Add(searchQuery, (resultJobs, resultFolders));
+
+                await SendSearchResults(botClient, chatId, searchQuery, resultJobs, resultFolders, cancellationToken);
             }
         }
 
-        private static async Task SearchRecursivelyAsync(HttpClient client, string currentPath, string searchQuery, List<Job> matchingJobs, HashSet<string> matchingFolders, long userId, string parentPath)
+        private static async Task SearchRecursivelyAsync(HttpClient client, string currentPath, string searchQuery, ConcurrentBag<Job> matchingJobs, ConcurrentDictionary<string, byte> matchingFolders, long userId, string parentPath, int depth)
         {
+            if (depth <= 0) return;
+
             try
             {
                 Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, Searching in folder: {currentPath}");
@@ -90,7 +94,6 @@ namespace TelegramBot.Utilities.Deploy.General
                 string fullPath = string.IsNullOrEmpty(parentPath) ? currentPath : $"{parentPath}/{currentPath}";
                 bool folderMatches = fullPath.ToLower().Contains(searchQuery);
 
-                // Thiết lập xác thực
                 var userRole = await CredentialService.GetUserRoleAsync(userId);
                 var (username, password) = CredentialService.GetCredentialsForRole(userRole);
                 var authString = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
@@ -115,6 +118,8 @@ namespace TelegramBot.Utilities.Deploy.General
 
                 bool addedToMatchingFolders = false;
 
+                var tasks = new List<Task>();
+
                 foreach (var job in jobs)
                 {
                     var jobName = job["name"]?.ToString();
@@ -131,7 +136,7 @@ namespace TelegramBot.Utilities.Deploy.General
                             matchingJobs.Add(new Job { JobName = jobName, Url = relativeUrl, FullPath = fullPath });
                             if (folderMatches && !addedToMatchingFolders)
                             {
-                                matchingFolders.Add(fullPath);
+                                matchingFolders.TryAdd(fullPath, 0);
                                 addedToMatchingFolders = true;
                             }
                         }
@@ -139,19 +144,33 @@ namespace TelegramBot.Utilities.Deploy.General
                     else
                     {
                         Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, Found folder: {jobName}. Searching recursively...");
-                        await SearchRecursivelyAsync(client, jobName, searchQuery, matchingJobs, matchingFolders, userId, fullPath);
+                        tasks.Add(SearchRecursivelyAsync(client, jobName, searchQuery, matchingJobs, matchingFolders, userId, fullPath, depth - 1));
                     }
                 }
 
-                // If this folder matches and we haven't added it yet (no matching jobs), add it now
+                await Task.WhenAll(tasks);
+
                 if (folderMatches && !addedToMatchingFolders)
                 {
-                    matchingFolders.Add(fullPath);
+                    matchingFolders.TryAdd(fullPath, 0);
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, Error searching folder {currentPath}: {ex.Message}");
+            }
+        }
+
+        private static async Task SendSearchResults(ITelegramBotClient botClient, long chatId, string searchQuery, List<Job> jobs, List<string> folders, CancellationToken cancellationToken)
+        {
+            if (jobs.Any() || folders.Any())
+            {
+                var keyboard = CreateCombinedSearchKeyboard(jobs, folders);
+                await botClient.SendTextMessageAsync(chatId, $"Kết quả tìm kiếm cho '{searchQuery}':", replyMarkup: keyboard, cancellationToken: cancellationToken);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy job hoặc folder nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
             }
         }
 

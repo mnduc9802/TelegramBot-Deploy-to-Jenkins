@@ -58,7 +58,7 @@ namespace TelegramBot.Core.Handlers
             }
             else if (data == "search")
             {
-                await CombinedSearchUtility.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
+                await Finder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
             }
             else if (data.StartsWith("folder_"))
             {

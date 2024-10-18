@@ -80,7 +80,7 @@ namespace TelegramBot.Core.Handlers
 
         public static async Task HandleSpecialStates(ITelegramBotClient botClient, Message message, long chatId, CancellationToken cancellationToken)
         {
-            await CombinedSearchUtility.HandleSearchQuery(botClient, message, cancellationToken);
+            await Finder.HandleSearchQuery(botClient, message, cancellationToken);
             
 
             if (FeedbackCommand.feedbackState.TryGetValue(chatId, out bool isFeedback) && isFeedback)
