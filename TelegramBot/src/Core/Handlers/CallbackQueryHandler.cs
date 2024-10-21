@@ -56,6 +56,10 @@ namespace TelegramBot.Core.Handlers
             {
                 await FolderPaginator.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
             }
+            else if (data.StartsWith("searchpage_"))
+            {
+                await Finder.HandleSearchPaginationCallback(botClient, callbackQuery, cancellationToken);
+            }
             else if (data == "search")
             {
                 await Finder.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
@@ -69,11 +73,6 @@ namespace TelegramBot.Core.Handlers
                 await HandleEnterVersionCallback(botClient, callbackQuery, data, cancellationToken);
             }
 
-            ////Job
-            //else if (data == "combined_search")
-            //{
-            //    await CombinedSearchHandler.HandleSearchCallback(botClient, callbackQuery, cancellationToken);
-            //}
             else if (data == "back_to_folder")
             {
                 await HandleBackToFolderCallback(botClient, callbackQuery, cancellationToken);

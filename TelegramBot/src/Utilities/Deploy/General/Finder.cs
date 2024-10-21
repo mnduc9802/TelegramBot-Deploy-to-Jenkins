@@ -10,14 +10,17 @@ using System.Net.Http.Headers;
 using System.Text;
 using TelegramBot.Services;
 using System.Collections.Concurrent;
+using System.Linq;
 
 namespace TelegramBot.Utilities.Deploy.General
 {
     public static class Finder
     {
-        private static readonly Dictionary<long, int> lastMessageIds = new Dictionary<long, int>();
+        private static readonly ConcurrentDictionary<long, int> lastMessageIds = new ConcurrentDictionary<long, int>();
         private static readonly HttpClient httpClient;
         private static readonly LRUCache<string, (List<Job> Jobs, List<string> Folders)> searchCache = new LRUCache<string, (List<Job>, List<string>)>(100, TimeSpan.FromDays(1));
+        private const int RESULTS_PER_PAGE = 5;
+        private static readonly ConcurrentDictionary<long, (string Query, List<Job> Jobs, List<string> Folders)> searchState = new ConcurrentDictionary<long, (string, List<Job>, List<string>)>();
 
         static Finder()
         {
@@ -32,8 +35,6 @@ namespace TelegramBot.Utilities.Deploy.General
         {
             var chatId = callbackQuery.Message.Chat.Id;
             var userId = callbackQuery.From.Id;
-
-            Console.WriteLine($"HandleSearchCallback - User ID: {userId}, Chat ID: {chatId}");
 
             await botClient.DeleteMessageAsync(chatId, callbackQuery.Message.MessageId, cancellationToken);
 
@@ -52,15 +53,14 @@ namespace TelegramBot.Utilities.Deploy.General
             var chatId = message.Chat.Id;
             var userId = message.From.Id;
 
-            Console.WriteLine($"HandleSearchQuery - User ID: {userId}, Chat ID: {chatId}, Query: {message.Text}");
-
             if (message.ReplyToMessage?.Text == "Vui lòng trả lời tin nhắn này để tìm kiếm job hoặc folder:")
             {
                 var searchQuery = message.Text.ToLower();
 
                 if (searchCache.TryGetValue(searchQuery, out var cachedResult))
                 {
-                    await SendSearchResults(botClient, chatId, searchQuery, cachedResult.Jobs, cachedResult.Folders, cancellationToken);
+                    searchState[chatId] = (searchQuery, cachedResult.Jobs, cachedResult.Folders);
+                    await SendSearchResultsPage(botClient, chatId, 0, cancellationToken);
                     return;
                 }
 
@@ -78,8 +78,9 @@ namespace TelegramBot.Utilities.Deploy.General
                 var resultFolders = matchingFolders.Keys.ToList();
 
                 searchCache.Add(searchQuery, (resultJobs, resultFolders));
+                searchState[chatId] = (searchQuery, resultJobs, resultFolders);
 
-                await SendSearchResults(botClient, chatId, searchQuery, resultJobs, resultFolders, cancellationToken);
+                await SendSearchResultsPage(botClient, chatId, 0, cancellationToken);
             }
         }
 
@@ -89,8 +90,6 @@ namespace TelegramBot.Utilities.Deploy.General
 
             try
             {
-                Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, Searching in folder: {currentPath}");
-
                 string fullPath = string.IsNullOrEmpty(parentPath) ? currentPath : $"{parentPath}/{currentPath}";
                 bool folderMatches = fullPath.ToLower().Contains(searchQuery);
 
@@ -102,7 +101,6 @@ namespace TelegramBot.Utilities.Deploy.General
                 var response = await client.GetAsync($"/job/{fullPath.Replace("/", "/job/")}/api/json?tree=jobs[name,url,color]");
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, Failed to fetch jobs for path {fullPath}. Status code: {response.StatusCode}");
                     return;
                 }
 
@@ -112,7 +110,6 @@ namespace TelegramBot.Utilities.Deploy.General
 
                 if (jobs == null)
                 {
-                    Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, No jobs found for path {fullPath}");
                     return;
                 }
 
@@ -130,7 +127,6 @@ namespace TelegramBot.Utilities.Deploy.General
 
                     if (job["color"] != null)
                     {
-                        Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, Found job: {jobName}");
                         if (jobName.ToLower().Contains(searchQuery) || folderMatches)
                         {
                             matchingJobs.Add(new Job { JobName = jobName, Url = relativeUrl, FullPath = fullPath });
@@ -143,7 +139,6 @@ namespace TelegramBot.Utilities.Deploy.General
                     }
                     else
                     {
-                        Console.WriteLine($"SearchRecursivelyAsync - User ID: {userId}, Found folder: {jobName}. Searching recursively...");
                         tasks.Add(SearchRecursivelyAsync(client, jobName, searchQuery, matchingJobs, matchingFolders, userId, fullPath, depth - 1));
                     }
                 }
@@ -161,44 +156,125 @@ namespace TelegramBot.Utilities.Deploy.General
             }
         }
 
-        private static async Task SendSearchResults(ITelegramBotClient botClient, long chatId, string searchQuery, List<Job> jobs, List<string> folders, CancellationToken cancellationToken)
+        private static async Task SendSearchResultsPage(ITelegramBotClient botClient, long chatId, int page, CancellationToken cancellationToken)
         {
-            if (jobs.Any() || folders.Any())
+            if (searchState.TryGetValue(chatId, out var state))
             {
-                var keyboard = CreateCombinedSearchKeyboard(jobs, folders);
-                await botClient.SendTextMessageAsync(chatId, $"Kết quả tìm kiếm cho '{searchQuery}':", replyMarkup: keyboard, cancellationToken: cancellationToken);
-            }
-            else
-            {
-                await botClient.SendTextMessageAsync(chatId, $"Không tìm thấy job hoặc folder nào phù hợp với '{searchQuery}'.", cancellationToken: cancellationToken);
+                var (searchQuery, jobs, folders) = state;
+                var allResults = jobs.Select(j => (Item: (object)j, IsJob: true))
+                                     .Concat(folders.Select(f => (Item: (object)f, IsJob: false)))
+                                     .ToList();
+
+                int totalPages = (allResults.Count + RESULTS_PER_PAGE - 1) / RESULTS_PER_PAGE;
+                var pageResults = allResults.Skip(page * RESULTS_PER_PAGE).Take(RESULTS_PER_PAGE).ToList();
+
+                if (pageResults.Any())
+                {
+                    var keyboard = CreateSearchKeyboard(pageResults, page, totalPages);
+                    await botClient.SendTextMessageAsync(
+                        chatId,
+                        $"Kết quả tìm kiếm cho '{searchQuery}' (Trang {page + 1}/{totalPages}):",
+                        replyMarkup: keyboard,
+                        cancellationToken: cancellationToken
+                    );
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(
+                        chatId,
+                        $"Không tìm thấy job hoặc folder nào phù hợp với '{searchQuery}'.",
+                        cancellationToken: cancellationToken
+                    );
+                }
             }
         }
 
-        private static InlineKeyboardMarkup CreateCombinedSearchKeyboard(List<Job> jobs, List<string> folders)
+        private static InlineKeyboardMarkup CreateSearchKeyboard(List<(object Item, bool IsJob)> results, int currentPage, int totalPages)
         {
             var keyboardButtons = new List<List<InlineKeyboardButton>>();
-
-            foreach (var job in jobs)
+            foreach (var result in results)
             {
-                var shortId = JobKeyboardManager.GenerateUniqueShortId();
-                JobKeyboardManager.jobUrlMap[shortId] = job.Url;
-                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"🔧 {job.FullPath} {job.JobName}", $"deploy_{shortId}") });
+                if (result.IsJob)
+                {
+                    var job = (Job)result.Item;
+                    var shortId = JobKeyboardManager.GenerateUniqueShortId();
+                    JobKeyboardManager.jobUrlMap[shortId] = job.Url;
+                    keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"🔧 {job.FullPath} {job.JobName}", $"deploy_{shortId}") });
+                }
+                else
+                {
+                    var folder = (string)result.Item;
+                    var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                    FolderKeyboardManager.folderPathMap[shortId] = folder;
+                    keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"📁 {folder}", $"folder_{shortId}") });
+                }
             }
 
-            foreach (var folder in folders)
+            var lastRow = new List<InlineKeyboardButton>();
+
+            if (currentPage > 0)
             {
-                var shortId = Guid.NewGuid().ToString("N").Substring(0, 8);
-                FolderKeyboardManager.folderPathMap[shortId] = folder;
-                keyboardButtons.Add(new List<InlineKeyboardButton> { InlineKeyboardButton.WithCallbackData($"📁 {folder}", $"folder_{shortId}") });
+                lastRow.Add(InlineKeyboardButton.WithCallbackData("⬅️", $"searchpage_{currentPage - 1}"));
             }
 
-            keyboardButtons.Add(new List<InlineKeyboardButton>
+            lastRow.Add(InlineKeyboardButton.WithCallbackData("🔍", "search"));
+            lastRow.Add(InlineKeyboardButton.WithCallbackData("📁", "back_to_folder"));
+
+            if (currentPage < totalPages - 1)
             {
-                InlineKeyboardButton.WithCallbackData("🔍", "search"),
-                InlineKeyboardButton.WithCallbackData("📁", "back_to_folder")
-            });
+                lastRow.Add(InlineKeyboardButton.WithCallbackData("➡️", $"searchpage_{currentPage + 1}"));
+            }
+
+            keyboardButtons.Add(lastRow);
 
             return new InlineKeyboardMarkup(keyboardButtons);
+        }
+
+        public static async Task HandleSearchPaginationCallback(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            var chatId = callbackQuery.Message.Chat.Id;
+            var messageId = callbackQuery.Message.MessageId;
+
+            if (callbackQuery.Data.StartsWith("searchpage_"))
+            {
+                var page = int.Parse(callbackQuery.Data.Split('_')[1]);
+                await UpdateSearchResultsPage(botClient, chatId, messageId, page, cancellationToken);
+            }
+        }
+
+        private static async Task UpdateSearchResultsPage(ITelegramBotClient botClient, long chatId, int messageId, int page, CancellationToken cancellationToken)
+        {
+            if (searchState.TryGetValue(chatId, out var state))
+            {
+                var (searchQuery, jobs, folders) = state;
+                var allResults = jobs.Select(j => (Item: (object)j, IsJob: true))
+                                     .Concat(folders.Select(f => (Item: (object)f, IsJob: false)))
+                                     .ToList();
+
+                int totalPages = (allResults.Count + RESULTS_PER_PAGE - 1) / RESULTS_PER_PAGE;
+                var pageResults = allResults.Skip(page * RESULTS_PER_PAGE).Take(RESULTS_PER_PAGE).ToList();
+
+                if (pageResults.Any())
+                {
+                    var keyboard = CreateSearchKeyboard(pageResults, page, totalPages);
+                    await botClient.EditMessageTextAsync(
+                        chatId,
+                        messageId,
+                        $"Kết quả tìm kiếm cho '{searchQuery}' (Trang {page + 1}/{totalPages}):",
+                        replyMarkup: keyboard,
+                        cancellationToken: cancellationToken
+                    );
+                }
+                else
+                {
+                    await botClient.EditMessageTextAsync(
+                        chatId,
+                        messageId,
+                        $"Không tìm thấy job hoặc folder nào phù hợp với '{searchQuery}'.",
+                        cancellationToken: cancellationToken
+                    );
+                }
+            }
         }
     }
 }
